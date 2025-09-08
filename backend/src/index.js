@@ -10,7 +10,12 @@ app.use(cors());
 
 app.use('/api/availability', availabilityRouter);
 
-app.listen(config.port, () => {
-    console.log(`Scheduler backend listening on ${config.port}`);
-    try { watchFile(); } catch (e) { console.warn('Watch disabled', e.message); }
-});
+// For Vercel serverless
+if (process.env.NODE_ENV === 'production') {
+    module.exports = app;
+} else {
+    app.listen(config.port, () => {
+        console.log(`Scheduler backend listening on ${config.port}`);
+        try { watchFile(); } catch (e) { console.warn('Watch disabled', e.message); }
+    });
+}
