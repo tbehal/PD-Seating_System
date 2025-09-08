@@ -1,19 +1,22 @@
+// api/index.js
 const express = require('express');
 const cors = require('cors');
 const serverless = require('serverless-http');
+ 
+// Import backend modules
+const config = require('../backend/src/config');         
 const availabilityRouter = require('../backend/src/routes/availability');
-
+ 
 const app = express();
-app.use(express.json());
 app.use(cors());
-
-// API routes
+app.use(express.json());
+ 
+// Routes 
 app.use('/availability', availabilityRouter);
-
-// Health check 
-app.get('/health', (req, res) => {
+app.get('/health', (_req, res) => {
   res.json({ status: 'OK', message: 'Backend is running' });
 });
+ 
 
-module.exports = app;
-module.exports.handler = serverless(app);
+const handler = serverless(app);
+module.exports = (req, res) => handler(req, res);
