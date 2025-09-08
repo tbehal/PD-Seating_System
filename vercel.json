@@ -1,10 +1,19 @@
 {
   "version": 2,
-  "functions": {
-    "api/index.js": {
-      "runtime": "@vercel/node@20"
+  "builds": [
+    {
+      "src": "index.html",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "assets/**",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "api/index.js", 
+      "use": "@vercel/node@20.x"
     }
-  },
+  ],
   "routes": [
     { "src": "/api/health", "dest": "/api/index.js" },
     { "src": "/api/availability/(.*)", "dest": "/api/index.js" },
