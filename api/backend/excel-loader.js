@@ -73,10 +73,10 @@ async function loadAvailabilityRows() {
     function parseSheetForAvailability(sheet, shift, rows) {
         if (!sheet) return;
         const weekHeaderRow = sheet.getRow(1);
-        const dataHeaderRow = sheet.getRow(2);
+        const dateHeaderRow = sheet.getRow(2);
         let lastDataColumn = 0;
         // Find the last column with data in the header
-        dataHeaderRow.eachCell({ includeEmpty: false }, (cell, colNumber) => {
+        dateHeaderRow.eachCell({ includeEmpty: false }, (cell, colNumber) => {
             if (colNumber > 2) { // Columns 1 and 2 are Lab/Station
                 lastDataColumn = colNumber;
             }
@@ -90,10 +90,11 @@ async function loadAvailabilityRows() {
 
             for (let colIdx = 3; colIdx <= lastDataColumn; colIdx++) {
                 const week = Number(weekHeaderRow.getCell(colIdx).value);
+                const date = (dateHeaderRow.getCell(colIdx).value || '').toString().trim();
                 if (!week || isNaN(week)) continue; // Skip columns that aren't valid weeks
                 const practitioner = (row.getCell(colIdx).value || '').toString().trim();
                 const isAvailable = practitioner === '';
-                rows.push({ week, lab, station, shift, practitioner, available: isAvailable });
+                rows.push({ week, date, lab, station, shift, practitioner, available: isAvailable });
             }
         });
     }
@@ -174,6 +175,7 @@ class AvailabilityCalculator {
         this.availabilityMap = new Map();
         this.labStationMap = new Map(); // Stores a Set of stations for each lab
         this.maxWeek = 0;
+        this.weekDates = new Map(); // key: week number, value: date string
         this._processData(availabilityData);
     }
 
@@ -183,7 +185,18 @@ class AvailabilityCalculator {
             if (!this.availabilityMap.has(key)) {
                 this.availabilityMap.set(key, new Map());
             }
-            this.availabilityMap.get(key).set(slot.week, slot.available);
+            
+            // Store practitioner name if booked, or true if available
+            if (slot.available) {
+                this.availabilityMap.get(key).set(slot.week, true);
+            } else {
+                this.availabilityMap.get(key).set(slot.week, slot.practitioner || "✗");
+            }
+
+            // Store week dates
+            if (slot.date) {
+                this.weekDates.set(slot.week, slot.date);
+            }
 
             if (!this.labStationMap.has(slot.lab)) {
                 this.labStationMap.set(slot.lab, new Set());
@@ -205,7 +218,9 @@ class AvailabilityCalculator {
         for (let w = startWeek; w <= endWeek - weeksNeeded + 1; w++) {
             let isBlockAvailable = true;
             for (let i = 0; i < weeksNeeded; i++) {
-                if (!weeklyAvailability.get(w + i)) {
+                const value = weeklyAvailability.get(w + i);
+                // Only consider a slot available if it's exactly true (not a string)
+                if (value !== true) {
                     isBlockAvailable = false;
                     break;
                 }
@@ -218,11 +233,26 @@ class AvailabilityCalculator {
         return combinations;
     }
 
-    findAllRankedCombinations({ shift, startWeek, endWeek, weeksNeeded, level }) {
+    findAllRankedCombinations({ shift, startWeek, endWeek, weeksNeeded, level, stationType }) {
         const level1Priority = ['Lab A', 'Lab B', 'Lab C', 'Lab E'];
         const level1Secondary = ['Lab B9', 'Lab D'];
         const level2Priority = ['Lab B9', 'Lab D'];
         const level2Secondary = ['Lab A', 'Lab B', 'Lab C', 'Lab E'];
+
+        // Define LH stations for each lab
+        const lhStations = {
+            'Lab A': ['1', '38'],
+            'Lab B': ['26'],
+            'Lab C': ['7'],
+            'Lab E': ['14'],
+            'Lab B9': ['10', '11'],
+            'Lab D': ['1']
+        };
+
+        // Helper function to check if a station is LH
+        const isLHStation = (lab, station) => {
+            return lhStations[lab] && lhStations[lab].includes(station);
+        };
 
         let labOrder;
         if (level === 1) {
@@ -237,11 +267,18 @@ class AvailabilityCalculator {
         let idCounter = 0;
 
         for (const lab of labOrder) {
-            const stations = Array.from(this.labStationMap.get(lab) || []).sort((a, b) => {
+            let stations = Array.from(this.labStationMap.get(lab) || []).sort((a, b) => {
                 const numA = parseInt(a.replace(/[^0-9]/g, ''), 10) || 0;
                 const numB = parseInt(b.replace(/[^0-9]/g, ''), 10) || 0;
                 return numA - numB;
             });
+
+            // Filter stations based on stationType (LH/RH)
+            if (stationType === 'LH') {
+                stations = stations.filter(station => isLHStation(lab, station));
+            } else if (stationType === 'RH') {
+                stations = stations.filter(station => !isLHStation(lab, station));
+            }
 
             for (const station of stations) {
                 const slots = this._findSlotsForLocation({
@@ -249,12 +286,15 @@ class AvailabilityCalculator {
                 });
 
                 for (const weekCombination of slots) {
+                    const weekDates = weekCombination.map(week => this.weekDates.get(week) || '');
                     rankedResults.push({
                         id: `${lab}-${station}-${shift}-${weekCombination.join(',')}-${idCounter++}`,
                         lab,
                         station,
                         shift,
-                        weeks: weekCombination
+                        weeks: weekCombination,
+                        weekDates: weekDates,
+                        stationType: isLHStation(lab, station) ? 'LH' : 'RH'
                     });
                 }
             }
@@ -275,21 +315,49 @@ class AvailabilityCalculator {
 
         const grid = [];
         const weekHeaders = Array.from({ length: this.maxWeek }, (_, i) => i + 1);
+        const weekDates = Array.from({ length: this.maxWeek }, (_, i) => this.weekDates.get(i + 1) || '');
+
+        // Define LH stations for each lab
+        const lhStations = {
+            'Lab A': ['1', '38'],
+            'Lab B': ['26'],
+            'Lab C': ['7'],
+            'Lab E': ['14']
+    
+        };
+
+        // Helper function to check if a station is LH
+        const isLHStation = (lab, station) => {
+            return lhStations[lab] && lhStations[lab].includes(station);
+        };
 
         for (const station of stations) {
             const key = `${lab}-${station}-${shift}`;
             const availability = this.availabilityMap.get(key) || new Map();
-            const row = {
-                station: station,
-                availability: []
+            
+            // Format station display with LH/RH suffix
+            const displayStation = isLHStation(lab, station) ? `${station}-LH` : station;
+            const row = { 
+                station: displayStation,
+                stationId: station, // Store original station number for API calls
+                availability: [] 
             };
+
             for (let w = 1; w <= this.maxWeek; w++) {
-                row.availability.push(availability.get(w) ? '✓' : '✗');
+                // Instead of only ✓/✗, return the trainee name if booked
+                const isAvailable = availability.get(w);
+                if (isAvailable === true) {
+                    row.availability.push("✓");
+                } else if (typeof isAvailable === "string" && isAvailable.trim() !== "") {
+                    row.availability.push(isAvailable); // Show the student's name
+                } else {
+                    row.availability.push("✗"); // fallback
+                }
             }
             grid.push(row);
         }
 
-        return { lab, shift, weeks: weekHeaders, grid };
+        return { lab, shift, weeks: weekHeaders, weekDates, grid };
     }
 
     updateData(newAvailabilityData) {
@@ -389,4 +457,49 @@ async function exportCurrentData() {
     }
 }
 
-module.exports = { loadAvailabilityRows, AvailabilityCalculator, updateAvailability, resetAllBookings, exportCurrentData };
+// Clear booking(s) for given lab/station/shift/weeks
+async function unbookAvailability({ lab, station, shift, weeks }) {
+    const workbookBuffer = await loadWorkbookBuffer();
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(workbookBuffer);
+
+    const sheet = workbook.getWorksheet(shift);
+    if (!sheet) {
+        const err = new Error(`Shift "${shift}" not found in the workbook.`);
+        err.isBusinessLogic = true;
+        throw err;
+    }
+
+    const weekHeaderRow = sheet.getRow(1);
+    const weekToColMap = new Map();
+    weekHeaderRow.eachCell({ includeEmpty: false }, (cell, colNumber) => {
+        const weekValue = Number(cell.value);
+        if (weekValue) {
+            weekToColMap.set(weekValue, colNumber);
+        }
+    });
+
+    let targetRow = null;
+    sheet.eachRow((row) => {
+        const rowLab = (row.getCell(1).value || '').toString().trim();
+        const rowStation = (row.getCell(2).value || '').toString().trim();
+        if (rowLab === lab && rowStation === station) {
+            targetRow = row;
+        }
+    });
+
+    if (!targetRow) {
+        const err = new Error(`Lab "${lab}" - Station "${station}" not found.`);
+        err.isBusinessLogic = true;
+        throw err;
+    }
+
+    const colsToClear = weeks.map(week => weekToColMap.get(week)).filter(Boolean);
+    colsToClear.forEach(col => {
+        targetRow.getCell(col).value = '';
+    });
+
+    await saveWorkbookBuffer(workbook);
+}
+
+module.exports = { loadAvailabilityRows, AvailabilityCalculator, updateAvailability, unbookAvailability, resetAllBookings, exportCurrentData };

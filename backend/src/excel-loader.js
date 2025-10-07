@@ -165,6 +165,51 @@ async function updateAvailability({ lab, station, shift, weeks, traineeName }) {
     await saveWorkbookBuffer(workbook);
 }
 
+// Clear booking(s) for given lab/station/shift/weeks
+async function unbookAvailability({ lab, station, shift, weeks }) {
+    const workbookBuffer = await loadWorkbookBuffer();
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.load(workbookBuffer);
+
+    const sheet = workbook.getWorksheet(shift);
+    if (!sheet) {
+        const err = new Error(`Shift "${shift}" not found in the workbook.`);
+        err.isBusinessLogic = true;
+        throw err;
+    }
+
+    const weekHeaderRow = sheet.getRow(1);
+    const weekToColMap = new Map();
+    weekHeaderRow.eachCell({ includeEmpty: false }, (cell, colNumber) => {
+        const weekValue = Number(cell.value);
+        if (weekValue) {
+            weekToColMap.set(weekValue, colNumber);
+        }
+    });
+
+    let targetRow = null;
+    sheet.eachRow((row) => {
+        const rowLab = (row.getCell(1).value || '').toString().trim();
+        const rowStation = (row.getCell(2).value || '').toString().trim();
+        if (rowLab === lab && rowStation === station) {
+            targetRow = row;
+        }
+    });
+
+    if (!targetRow) {
+        const err = new Error(`Lab "${lab}" - Station "${station}" not found.`);
+        err.isBusinessLogic = true;
+        throw err;
+    }
+
+    const colsToClear = weeks.map(week => weekToColMap.get(week)).filter(Boolean);
+    colsToClear.forEach(col => {
+        targetRow.getCell(col).value = '';
+    });
+
+    await saveWorkbookBuffer(workbook);
+}
+
 
 /**
  * A class to calculate and cache availability combinations and provide visualization data.
@@ -183,7 +228,12 @@ class AvailabilityCalculator {
             if (!this.availabilityMap.has(key)) {
                 this.availabilityMap.set(key, new Map());
             }
-            this.availabilityMap.get(key).set(slot.week, slot.available);
+            // Store practitioner name if booked, or true if available
+            if (slot.available) {
+                this.availabilityMap.get(key).set(slot.week, true);
+            } else {
+                this.availabilityMap.get(key).set(slot.week, slot.practitioner || "✗");
+            }
 
             if (!this.labStationMap.has(slot.lab)) {
                 this.labStationMap.set(slot.lab, new Set());
@@ -284,7 +334,14 @@ class AvailabilityCalculator {
                 availability: []
             };
             for (let w = 1; w <= this.maxWeek; w++) {
-                row.availability.push(availability.get(w) ? '✓' : '✗');
+                const value = availability.get(w);
+                if (value === true) {
+                    row.availability.push('✓');
+                } else if (typeof value === 'string' && value.trim() !== '') {
+                    row.availability.push(value);
+                } else {
+                    row.availability.push('✗');
+                }
             }
             grid.push(row);
         }
@@ -389,4 +446,4 @@ async function exportCurrentData() {
     }
 }
 
-module.exports = { loadAvailabilityRows, AvailabilityCalculator, updateAvailability, resetAllBookings, exportCurrentData };
+module.exports = { loadAvailabilityRows, AvailabilityCalculator, updateAvailability, unbookAvailability, resetAllBookings, exportCurrentData };

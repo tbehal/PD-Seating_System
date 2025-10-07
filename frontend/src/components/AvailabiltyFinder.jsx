@@ -1,5 +1,28 @@
 import React, { useState, useCallback } from 'react';
-import { findCombinations, fetchGrid, bookSlot } from '../api';
+import { findCombinations, fetchGrid, bookSlot, unbookSlot } from '../api';
+
+// Formats "W# - DD-Mon" using weekDates[] or termStartDate.
+// Falls back to "W#" if no date info provided.
+const formatWeekLabel = (data, idx) => {
+  const weekNumber = data.weeks[idx];
+  let date;
+
+  if (Array.isArray(data.weekDates) && data.weekDates[idx]) {
+    date = new Date(data.weekDates[idx]);
+  } else if (data.termStartDate) {
+    const start = new Date(data.termStartDate);
+    // weekNumber is 1-based; add (week-1)*7 days
+    start.setDate(start.getDate() + 7 * (weekNumber - 1));
+    date = start;
+  }
+
+  if (date && !isNaN(date)) {
+    // Example: 20-Oct
+    const label = date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+    return `W${weekNumber} - ${label}`;
+  }
+  return `W${weekNumber}`;
+};
 
 const SearchCriteriaForm = ({ criteria, onInputChange, onSearch, isLoading }) => (
     <form onSubmit={(e) => { e.preventDefault(); onSearch(); }} className="space-y-4">
@@ -37,6 +60,23 @@ const SearchCriteriaForm = ({ criteria, onInputChange, onSearch, isLoading }) =>
                 <option value={2}>Level 2 (LAB B9, D priority)</option>
             </select>
         </div>
+        <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Station Type</label>
+            <div className="space-y-2">
+                <label className="flex items-center">
+                    <input type="radio" name="stationType" value="all" checked={criteria.stationType === 'all'} onChange={onInputChange} className="mr-2" />
+                    <span className="text-sm text-gray-700">All Stations</span>
+                </label>
+                <label className="flex items-center">
+                    <input type="radio" name="stationType" value="LH" checked={criteria.stationType === 'LH'} onChange={onInputChange} className="mr-2" />
+                    <span className="text-sm text-gray-700">LH (Left Hand) Only</span>
+                </label>
+                <label className="flex items-center">
+                    <input type="radio" name="stationType" value="RH" checked={criteria.stationType === 'RH'} onChange={onInputChange} className="mr-2" />
+                    <span className="text-sm text-gray-700">RH (Right Hand) Only</span>
+                </label>
+            </div>
+        </div>
         <button type="submit" disabled={isLoading} className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:bg-gray-400">
             {isLoading ? 'Searching...' : 'Find Lab Availability'}
         </button>
@@ -58,9 +98,26 @@ const BookingSection = ({ traineeName, onTraineeNameChange, onBook, isBooking, s
             </button>
             {selectedCombination && (
                 <div className="pt-2">
-                    <p className="text-sm text-slate-600">
-                        Selected: <span className="font-semibold text-slate-800">{selectedCombination.lab} - Station {selectedCombination.station}</span> for weeks {selectedCombination.weeks.join(', ')}.
-                    </p>
+            <p className="text-sm text-slate-600">
+                Selected:{' '}
+                <span className="font-semibold text-slate-800">
+                  {selectedCombination.lab} - Station {selectedCombination.station}
+                </span>{' '}
+                for weeks{' '}
+                {selectedCombination.weeks
+                  .map((_, i) =>
+                    formatWeekLabel(
+                      {
+                        weeks: selectedCombination.weeks,
+                        weekDates: selectedCombination.weekDates,
+                        termStartDate: selectedCombination.termStartDate,
+                      },
+                      i
+                    )
+                  )
+                  .join(', ')}
+                .
+            </p>
                 </div>
             )}
         </div>
@@ -76,7 +133,17 @@ const SearchResults = ({ results, selected, onSelect, isLoading }) => (
                     {results.map((combo) => (
                         <button key={combo.id} onClick={() => onSelect(combo)} className={`w-full text-left p-3 rounded-lg transition-colors duration-200 ${selected?.id === combo.id ? 'bg-indigo-50 ring-2 ring-indigo-500' : 'bg-gray-50 hover:bg-gray-100'}`}>
                             <p className="font-semibold text-slate-800">{combo.lab} - Station {combo.station}</p>
-                            <p className="text-sm text-slate-600">Weeks: {combo.weeks.join(', ')}</p>
+                            <p className="text-sm text-slate-600">
+                              Weeks:{' '}
+                              {combo.weeks
+                                .map((_, i) =>
+                                  formatWeekLabel(
+                                    { weeks: combo.weeks, weekDates: combo.weekDates, termStartDate: combo.termStartDate },
+                                    i
+                                  )
+                                )
+                                .join(', ')}
+                            </p>
                         </button>
                     ))}
                 </div>
@@ -87,32 +154,72 @@ const SearchResults = ({ results, selected, onSelect, isLoading }) => (
     </div>
 );
 
-const AvailabilityGrid = ({ data, selectedCombination }) => (
+const AvailabilityGrid = ({ data, selectedCombination, onUnbook, onBookCell }) => (
     <div className="bg-white rounded-xl shadow-md border border-gray-200">
         <h2 className="text-xl font-semibold text-slate-800 p-4 border-b border-gray-200">Availability Grid: {data.lab} ({data.shift})</h2>
         <div className="overflow-x-auto p-2">
-            <table className="min-w-full border-collapse text-center">
+            <table className="min-w-full border-collapse text-center" style={{ tableLayout: 'fixed' }}>
                 <thead>
                     <tr>
-                        <th className="p-2 text-left text-sm font-semibold text-gray-600">Station</th>
-                        {data.weeks.map(week => <th key={week} className="p-2 text-sm font-semibold text-gray-600">W{week}</th>)}
+                        <th className="p-2 text-left text-sm font-semibold text-gray-600" style={{ width: '100px' }}>Station</th>
+                        {data.weeks.map((_, i) => (
+                            <th key={data.weeks[i]} className="p-2 text-sm font-semibold text-gray-600" style={{ width: '120px' }}>
+                                {formatWeekLabel(data, i)}
+                            </th>
+                        ))}
                     </tr>
                 </thead>
                 <tbody>
-                    {data.grid.map(row => (
-                        <tr key={row.station} className="odd:bg-white even:bg-gray-50">
-                            <td className={`p-2 border border-gray-200 font-bold ${selectedCombination?.station === row.station ? 'text-indigo-600' : 'text-slate-700'}`}>{row.station}</td>
-                            {row.availability.map((status, index) => {
-                                const week = data.weeks[index];
-                                const isSelected = selectedCombination?.station === row.station && selectedCombination?.weeks.includes(week);
-                                return (
-                                    <td key={index} className={`p-2 border border-gray-200 font-mono text-sm transition-colors duration-200 ${isSelected ? 'bg-indigo-500 text-white font-bold' : (status === '✓' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800')}`}>
-                                        {status}
-                                    </td>
-                                );
-                            })}
-                        </tr>
-                    ))}
+                    {data.grid.map(row => {
+                        const stationId = row.stationId || row.station; // Use stationId if available, fallback to station
+                        // Extract base station number for comparison (handles "1-LH", "27-RH", etc.)
+                        const rowStationBase = String(row.station).split('-')[0];
+                        const selectedStationBase = selectedCombination?.station ? String(selectedCombination.station).split('-')[0] : null;
+                        const isStationMatch = selectedStationBase && rowStationBase === selectedStationBase;
+                        
+                        return (
+                            <tr key={row.station} className="odd:bg-white even:bg-gray-50">
+                                <td className={`p-2 border border-gray-200 font-bold ${isStationMatch ? 'text-indigo-600' : 'text-slate-700'}`}>{row.station}</td>
+                                {row.availability.map((status, index) => {
+                                    const week = data.weeks[index];
+                                    const isSelected = isStationMatch && selectedCombination?.weeks.includes(week);
+                                    const isBookedName = status !== '✓' && status !== '✗' && typeof status === 'string' && status.trim() !== '';
+                                    const isAvailable = status === '✓';
+                                    const baseClasses = 'p-2 border border-gray-200 font-mono text-sm transition-colors duration-200';
+                                    const colorClasses = isSelected ? 'bg-indigo-500 text-white font-bold' : (status === '✓' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800');
+                                    const clickable = (isBookedName || isAvailable) ? ' cursor-pointer' : '';
+                                    const decoration = isBookedName ? ' underline decoration-dotted' : '';
+                                    const onClick = isBookedName 
+                                        ? () => onUnbook({ lab: data.lab, station: stationId, shift: data.shift, week })
+                                        : isAvailable 
+                                        ? () => onBookCell({ lab: data.lab, station: stationId, shift: data.shift, week })
+                                        : undefined;
+                                    // Combine action hint with full text for hover
+                                    const hoverText = isBookedName 
+                                        ? `${status} (Click to unbook)` 
+                                        : isAvailable 
+                                        ? 'Available - Click to book' 
+                                        : status;
+                                    return (
+                                        <td 
+                                            key={index} 
+                                            className={`${baseClasses} ${colorClasses}${clickable}${decoration}`} 
+                                            onClick={onClick} 
+                                            title={hoverText}
+                                            style={{ 
+                                                maxWidth: '120px', 
+                                                overflow: 'hidden', 
+                                                textOverflow: 'ellipsis', 
+                                                whiteSpace: 'nowrap' 
+                                            }}
+                                        >
+                                            {status}
+                                        </td>
+                                    );
+                                })}
+                            </tr>
+                        );
+                    })}
                 </tbody>
             </table>
         </div>
@@ -121,7 +228,7 @@ const AvailabilityGrid = ({ data, selectedCombination }) => (
 
 
 export default function AvailabilityFinder() {
-    const [searchCriteria, setSearchCriteria] = useState({ shift: 'AM', startWeek: 1, endWeek: 12, weeksNeeded: 2, level: 1 });
+    const [searchCriteria, setSearchCriteria] = useState({ shift: 'AM', startWeek: 1, endWeek: 12, weeksNeeded: 2, level: 1, stationType: 'all' });
     const [results, setResults] = useState([]);
     const [selectedCombination, setSelectedCombination] = useState(null);
     const [gridData, setGridData] = useState(null);
@@ -130,6 +237,8 @@ export default function AvailabilityFinder() {
     const [isBooking, setIsBooking] = useState(false);
     const [error, setError] = useState(null);
     const [bookingSuccess, setBookingSuccess] = useState('');
+    const [cellBookingDialog, setCellBookingDialog] = useState(null); // { lab, station, shift, week }
+    const [cellBookingName, setCellBookingName] = useState('');
 
     const handleInputChange = (e) => {
         const { name, value, type } = e.target;
@@ -181,6 +290,57 @@ export default function AvailabilityFinder() {
         }
     }, []);
 
+    const handleUnbook = useCallback(async ({ lab, station, shift, week }) => {
+        try {
+            const confirmed = window.confirm(`Unbook ${lab} - Station ${station} for week ${week}?`);
+            if (!confirmed) return;
+            await unbookSlot({ lab, station, shift, weeks: [week] });
+            // Refresh grid in place
+            if (gridData) {
+                const refreshed = await fetchGrid(lab, shift);
+                setGridData(refreshed);
+            }
+        } catch (err) {
+            setError(err.response?.data?.error || 'Failed to unbook slot.');
+        }
+    }, [gridData]);
+
+    const handleBookCell = useCallback(({ lab, station, shift, week }) => {
+        setCellBookingDialog({ lab, station, shift, week });
+        setCellBookingName('');
+    }, []);
+
+    const handleCellBookingSubmit = useCallback(async () => {
+        if (!cellBookingDialog || !cellBookingName.trim()) {
+            setError('Please enter a trainee name.');
+            return;
+        }
+
+        try {
+            setIsBooking(true);
+            setError(null);
+            await bookSlot({
+                lab: cellBookingDialog.lab,
+                station: cellBookingDialog.station,
+                shift: cellBookingDialog.shift,
+                weeks: [cellBookingDialog.week],
+                traineeName: cellBookingName.trim()
+            });
+            setBookingSuccess(`Successfully booked ${cellBookingDialog.lab} - Station ${cellBookingDialog.station} for week ${cellBookingDialog.week}!`);
+            setCellBookingDialog(null);
+            setCellBookingName('');
+            // Refresh grid
+            if (gridData) {
+                const refreshed = await fetchGrid(cellBookingDialog.lab, cellBookingDialog.shift);
+                setGridData(refreshed);
+            }
+        } catch (err) {
+            setError(err.response?.data?.error || 'Failed to book slot.');
+        } finally {
+            setIsBooking(false);
+        }
+    }, [cellBookingDialog, cellBookingName, gridData]);
+
     const handleBookSlot = async () => {
         if (!selectedCombination || !traineeName) {
             setError("Please select a slot and enter a trainee name to book.");
@@ -231,10 +391,76 @@ export default function AvailabilityFinder() {
 
                     <div className="lg:col-span-2 space-y-8">
                         <SearchResults results={results} selected={selectedCombination} onSelect={handleSelectCombination} isLoading={isLoading} />
-                        {gridData && <AvailabilityGrid data={gridData} selectedCombination={selectedCombination} />}
+                        {gridData && <AvailabilityGrid data={gridData} selectedCombination={selectedCombination} onUnbook={handleUnbook} onBookCell={handleBookCell} />}
                     </div>
                 </div>
             </div>
+
+            {/* Cell Booking Dialog */}
+            {cellBookingDialog && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
+                        <h3 className="text-xl font-bold text-slate-800 mb-4">Book Individual Slot</h3>
+                        <div className="space-y-4">
+                            <div className="space-y-2">
+                                <div>
+                                    <span className="font-semibold text-gray-700">Lab:</span>
+                                    <p className="text-slate-600 ml-4">{cellBookingDialog.lab}</p>
+                                </div>
+                                <div>
+                                    <span className="font-semibold text-gray-700">Station:</span>
+                                    <p className="text-slate-600 ml-4">{cellBookingDialog.station}</p>
+                                </div>
+                                <div>
+                                    <span className="font-semibold text-gray-700">Shift:</span>
+                                    <p className="text-slate-600 ml-4">{cellBookingDialog.shift}</p>
+                                </div>
+                                <div>
+                                    <span className="font-semibold text-gray-700">Week:</span>
+                                    <p className="text-slate-600 ml-4">{cellBookingDialog.week}</p>
+                                </div>
+                            </div>
+                            <div>
+                                <label htmlFor="cellBookingName" className="block text-sm font-medium text-gray-700 mb-2">
+                                    Trainee Name
+                                </label>
+                                <input
+                                    type="text"
+                                    id="cellBookingName"
+                                    value={cellBookingName}
+                                    onChange={(e) => setCellBookingName(e.target.value)}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                    placeholder="Enter trainee name"
+                                    autoFocus
+                                />
+                            </div>
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={handleCellBookingSubmit}
+                                    disabled={isBooking || !cellBookingName.trim()}
+                                    className={`flex-1 py-2 px-4 rounded-md text-white font-medium transition-colors ${
+                                        isBooking || !cellBookingName.trim()
+                                            ? 'bg-gray-400 cursor-not-allowed'
+                                            : 'bg-green-600 hover:bg-green-700'
+                                    }`}
+                                >
+                                    {isBooking ? 'Booking...' : 'Book Slot'}
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setCellBookingDialog(null);
+                                        setCellBookingName('');
+                                    }}
+                                    disabled={isBooking}
+                                    className="flex-1 py-2 px-4 rounded-md bg-gray-200 text-gray-800 font-medium hover:bg-gray-300 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
