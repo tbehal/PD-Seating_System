@@ -5,7 +5,7 @@ const config = {
     cacheDriver: (process.env.CACHE_DRIVER || 'node').toLowerCase(),
     cacheTTL: Number(process.env.CACHE_TTL_SECONDS || 3600),
     localExcelPath: process.env.LOCAL_EXCEL_PATH || './data/Test.xlsx',
-    useGraph: (process.env.USE_GRAPH || 'false').toLowerCase() === 'true',
+    useGraph: (process.env.USE_GRAPH || 'false').toLowerCase() === 'true' && process.env.NODE_ENV === 'production',
     graph: {
         token: process.env.GRAPH_ACCESS_TOKEN || '',
         driveId: process.env.GRAPH_DRIVE_ID || '',

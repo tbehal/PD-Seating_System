@@ -45,6 +45,15 @@ export async function bookSlot(bookingDetails) {
 }
 
 /**
+ * Unbooks a lab slot (clears trainee name) for given lab/station/shift/weeks.
+ * @param {object} details - { lab, station, shift, weeks }
+ * @returns {Promise<object>} A promise that resolves to the server's response.
+ */
+export async function unbookSlot(details) {
+    return await axios.post(`${API_BASE}/api/availability/unbook`, details);
+}
+
+/**
  * Invalidates the server-side cache.
  * @returns {Promise<object>} A promise that resolves to the server's response.
  */

@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const cache = require('../cache');
-const { loadAvailabilityRows, AvailabilityCalculator, updateAvailability } = require('../excel-loader');
+const { loadAvailabilityRows, AvailabilityCalculator, updateAvailability, unbookAvailability } = require('../excel-loader');
 
 const CACHE_KEY = 'availability_data'; // Using a more generic key
 
@@ -19,7 +19,7 @@ async function getCalculator() {
 // Route to find available combinations
 router.post('/find', async (req, res) => {
     try {
-        const { shift, startWeek, endWeek, weeksNeeded, level } = req.body;
+        const { shift, startWeek, endWeek, weeksNeeded, level, stationType } = req.body;
 
         if (!shift || startWeek === undefined || endWeek === undefined || !weeksNeeded || !level) {
             return res.status(400).json({ error: 'Missing required search criteria.' });
@@ -33,6 +33,7 @@ router.post('/find', async (req, res) => {
             endWeek: parseInt(endWeek, 10),
             weeksNeeded: parseInt(weeksNeeded, 10),
             level: parseInt(level, 10),
+            stationType: stationType || 'all'
         });
 
         res.json(combinations);
@@ -83,6 +84,30 @@ router.post('/book', async (req, res) => {
              return res.status(409).json({ error: err.message }); // 409 Conflict
         }
         res.status(500).json({ error: 'Failed to book slot.' });
+    }
+});
+
+// Route to unbook a slot
+router.post('/unbook', async (req, res) => {
+    try {
+        const { lab, station, shift, weeks } = req.body;
+        if (!lab || !station || !shift || !weeks || !Array.isArray(weeks)) {
+            return res.status(400).json({ error: 'Invalid unbooking data provided.' });
+        }
+
+        await unbookAvailability({ lab, station, shift, weeks });
+
+        // Invalidate the cache after a successful unbooking
+        await cache.del(CACHE_KEY);
+
+        res.json({ success: true, message: 'Slot(s) unbooked successfully.' });
+
+    } catch (err) {
+        console.error('Error unbooking slot:', err);
+        if (err.isBusinessLogic) {
+            return res.status(409).json({ error: err.message });
+        }
+        res.status(500).json({ error: 'Failed to unbook slot.' });
     }
 });
 
