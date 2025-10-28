@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const cache = require('../cache');
 const { loadAvailabilityRows, AvailabilityCalculator, updateAvailability, unbookAvailability } = require('../excel-loader');
+const hubspot = require('../hubspot');
 
 const CACHE_KEY = 'availability_data'; // Using a more generic key
 
@@ -64,18 +65,33 @@ router.post('/grid', async (req, res) => {
 // Route to book a slot
 router.post('/book', async (req, res) => {
     try {
-        const { lab, station, shift, weeks, traineeName } = req.body;
+        const { lab, station, shift, weeks, traineeName, contactId, paymentStatus } = req.body;
         if (!lab || !station || !shift || !weeks || !Array.isArray(weeks) || !traineeName) {
             return res.status(400).json({ error: 'Invalid booking data provided.' });
         }
 
-        // This function needs to be created in excel-loader.js
-        await updateAvailability({ lab, station, shift, weeks, traineeName });
+        // Persist booking to Excel, including HubSpot contactId if provided
+        await updateAvailability({ lab, station, shift, weeks, traineeName, contactId });
+
+        // If contactId is provided, update payment status in HubSpot
+        if (contactId && paymentStatus) {
+            try {
+                await hubspot.updateContactPaymentStatus(contactId, paymentStatus);
+            } catch (hubspotError) {
+                console.warn('Failed to update HubSpot payment status:', hubspotError.message);
+                // Don't fail the booking if HubSpot update fails
+            }
+        }
 
         // Invalidate the cache after a successful booking
         await cache.del(CACHE_KEY);
 
-        res.json({ success: true, message: 'Slot booked successfully.' });
+        res.json({ 
+            success: true, 
+            message: 'Slot booked successfully.',
+            contactId: contactId,
+            paymentStatus: paymentStatus
+        });
 
     } catch (err) {
         console.error('Error booking slot:', err);
@@ -171,6 +187,64 @@ router.get('/export', async (req, res) => {
     } catch (err) {
         console.error('❌ Error exporting data:', err);
         res.status(500).json({ error: 'Failed to export data.' });
+    }
+});
+
+// HubSpot integration routes
+
+// Search contacts by name
+router.get('/contacts/search', async (req, res) => {
+    try {
+        const { q, limit = 10 } = req.query;
+        
+        if (!q || q.trim().length < 2) {
+            return res.status(400).json({ error: 'Query parameter "q" is required and must be at least 2 characters long.' });
+        }
+
+        const contacts = await hubspot.searchContacts(q.trim(), parseInt(limit, 10));
+        res.json(contacts);
+    } catch (err) {
+        console.error('Error searching contacts:', err);
+        res.status(500).json({ error: 'Failed to search contacts.' });
+    }
+});
+
+// Get contact by ID
+router.get('/contacts/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        if (!id) {
+            return res.status(400).json({ error: 'Contact ID is required.' });
+        }
+
+        const contact = await hubspot.getContactById(id);
+        res.json(contact);
+    } catch (err) {
+        console.error('Error getting contact:', err);
+        res.status(500).json({ error: 'Failed to get contact.' });
+    }
+});
+
+// Update contact payment status
+router.patch('/contacts/:id/payment-status', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { paymentStatus } = req.body;
+        
+        if (!id) {
+            return res.status(400).json({ error: 'Contact ID is required.' });
+        }
+        
+        if (!paymentStatus) {
+            return res.status(400).json({ error: 'Payment status is required.' });
+        }
+
+        const updatedContact = await hubspot.updateContactPaymentStatus(id, paymentStatus);
+        res.json(updatedContact);
+    } catch (err) {
+        console.error('Error updating contact payment status:', err);
+        res.status(500).json({ error: 'Failed to update contact payment status.' });
     }
 });
 

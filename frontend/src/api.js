@@ -66,3 +66,114 @@ export async function invalidateCache() {
         throw error; // Re-throw to be handled by the caller
     }
 }
+
+/**
+ * Searches for contacts in HubSpot by name.
+ * @param {string} query - The search query.
+ * @param {number} limit - Maximum number of results to return.
+ * @returns {Promise<Array>} A promise that resolves to an array of contacts.
+ */
+export async function searchContacts(query, limit = 10) {
+    try {
+        const res = await axios.get(`${API_BASE}/api/availability/contacts/search`, {
+            params: { q: query, limit }
+        });
+        return res.data;
+    } catch (error) {
+        console.error('Error searching contacts:', error.response?.data?.error || error.message);
+        return [];
+    }
+}
+
+/**
+ * Gets a contact by ID from HubSpot.
+ * @param {string} contactId - The contact ID.
+ * @returns {Promise<object|null>} A promise that resolves to the contact data or null on error.
+ */
+export async function getContactById(contactId) {
+    try {
+        const res = await axios.get(`${API_BASE}/api/availability/contacts/${contactId}`);
+        return res.data;
+    } catch (error) {
+        console.error('Error getting contact:', error.response?.data?.error || error.message);
+        return null;
+    }
+}
+
+/**
+ * Searches for a contact by name in HubSpot.
+ * @param {string} name - The contact name to search for.
+ * @param {number} limit - Maximum number of results to return.
+ * @returns {Promise<object|null>} A promise that resolves to the contact data or null on error.
+ */
+export async function searchContactByName(name, limit = 5) {
+    try {
+        const res = await axios.get(`${API_BASE}/api/availability/contacts/search`, {
+            params: { q: name, limit }
+        });
+        if (res.data && res.data.length > 0) {
+            // Try to find exact match first (case-insensitive)
+            const exactMatch = res.data.find(contact => 
+                contact.fullName.toLowerCase() === name.toLowerCase()
+            );
+            if (exactMatch) return exactMatch;
+            
+            // Try to find best partial match
+            const bestMatch = res.data.find(contact => 
+                contact.fullName.toLowerCase().includes(name.toLowerCase()) ||
+                name.toLowerCase().includes(contact.fullName.toLowerCase())
+            );
+            if (bestMatch) return bestMatch;
+            
+            // Return first result as fallback
+            return res.data[0];
+        }
+        return null;
+    } catch (error) {
+        console.error('Error searching contact by name:', error.response?.data?.error || error.message);
+        return null;
+    }
+}
+
+/**
+ * Updates a contact's payment status in HubSpot.
+ * @param {string} contactId - The contact ID.
+ * @param {string} paymentStatus - The new payment status.
+ * @returns {Promise<object>} A promise that resolves to the server's response.
+ */
+export async function updateContactPaymentStatus(contactId, paymentStatus) {
+    try {
+        const res = await axios.patch(`${API_BASE}/api/availability/contacts/${contactId}/payment-status`, {
+            paymentStatus
+        });
+        return res.data;
+    } catch (error) {
+        console.error('Error updating payment status:', error.response?.data?.error || error.message);
+        throw error;
+    }
+}
+
+/**
+ * Exports the Excel file.
+ * @returns {Promise<void>}
+ */
+export async function exportExcel() {
+    try {
+        const res = await axios.get(`${API_BASE}/api/availability/export`, {
+            responseType: 'blob'
+        });
+        
+        // Create a download link
+        const url = window.URL.createObjectURL(new Blob([res.data]));
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `availability-${new Date().toISOString().split('T')[0]}.xlsx`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+    } catch (error) {
+        console.error('Error exporting Excel:', error.response?.data?.error || error.message);
+        throw error;
+    }
+}
