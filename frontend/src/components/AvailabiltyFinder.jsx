@@ -564,10 +564,10 @@ export default function AvailabilityFinder() {
 
                 // Try inline numeric ID from formats like "Name-2301416"
                 if (inlineIdMatch && inlineIdMatch[1]) {
-                    // Prefer exact lookup by ID when name is like "Name-123456"
-                    const contactById = await getContactById(inlineIdMatch[1]);
-                    if (contactById) {
-                        setStudentInfoDialog(prev => ({ ...prev, loading: false, hubspotContact: contactById }));
+                    // ID after '-' is Student ID, not the HubSpot object id → use search by student_id
+                    const byStudentId = await searchContactByName(inlineIdMatch[1]);
+                    if (byStudentId) {
+                        setStudentInfoDialog(prev => ({ ...prev, loading: false, hubspotContact: byStudentId }));
                         return;
                     }
                 }
