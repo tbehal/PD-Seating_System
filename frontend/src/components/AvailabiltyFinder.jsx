@@ -534,6 +534,8 @@ export default function AvailabilityFinder() {
             const weekIndex = gridData.weeks.indexOf(week);
             const rawValue = row.availability[weekIndex];
             const sidMatch = typeof rawValue === 'string' ? rawValue.match(/\[SID:(\d+)\]/) : null;
+            // Some prod entries are saved as "Name-123456"; extract trailing numeric token as student ID
+            const inlineIdMatch = typeof rawValue === 'string' ? rawValue.match(/(?:-|\s)(\d{4,})\s*$/) : null;
             const studentName = typeof rawValue === 'string' && rawValue.includes('[SID:')
                 ? rawValue.split('[SID:')[0].trim()
                 : rawValue;
@@ -556,6 +558,16 @@ export default function AvailabilityFinder() {
                     const byId = await getContactById(sidMatch[1]);
                     if (byId) {
                         setStudentInfoDialog(prev => ({ ...prev, loading: false, hubspotContact: byId }));
+                        return;
+                    }
+                }
+
+                // Try inline numeric ID from formats like "Name-2301416"
+                if (inlineIdMatch && inlineIdMatch[1]) {
+                    // Prefer exact lookup by ID when name is like "Name-123456"
+                    const contactById = await getContactById(inlineIdMatch[1]);
+                    if (contactById) {
+                        setStudentInfoDialog(prev => ({ ...prev, loading: false, hubspotContact: contactById }));
                         return;
                     }
                 }
