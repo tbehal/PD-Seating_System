@@ -105,7 +105,7 @@ async function loadAvailabilityRows() {
     return allRows;
 }
 
-async function updateAvailability({ lab, station, shift, weeks, traineeName }) {
+async function updateAvailability({ lab, station, shift, weeks, traineeName, contactId }) {
     const workbookBuffer = await loadWorkbookBuffer();
     const workbook = new ExcelJS.Workbook();
     await workbook.xlsx.load(workbookBuffer);
@@ -159,7 +159,10 @@ async function updateAvailability({ lab, station, shift, weeks, traineeName }) {
 
     // If all checks pass, update the cells
     colsToUpdate.forEach(col => {
-        targetRow.getCell(col).value = traineeName;
+        // Persist HubSpot contactId in a lightweight tag so we can retrieve exact contact later
+        // Example stored value: "Sandra Awada [SID:113603565653]"
+        const value = contactId ? `${traineeName} [SID:${contactId}]` : traineeName;
+        targetRow.getCell(col).value = value;
     });
 
     // Save the updated workbook
