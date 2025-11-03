@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef } from 'react';
-import { findCombinations, fetchGrid, bookSlot, unbookSlot, getContactById, searchContactByName, exportExcel } from '../api';
+import { findCombinations, fetchGrid, bookSlot, unbookSlot, getContactById, searchContactByName, exportExcel, resetAllBookings } from '../api';
 import ContactSearch from './ContactSearch';
 
 // Formats "W# - DD-Mon" using weekDates[] or termStartDate.
@@ -240,56 +240,87 @@ const SearchResults = ({ results, selected, onSelect, isLoading, isCollapsed, on
     </div>
 );
 
-const AvailabilityGrid = ({ data, selectedCombination, onUnbook, onBookCell, onShowStudentInfo, onExport, availableLabs, onLabChange }) => {
+const AvailabilityGrid = ({ data, selectedCombination, onUnbook, onUnbookMany, onBookCell, onShowStudentInfo, onExport, onClearAll, availableLabs, onLabChange }) => {
     const [isSelecting, setIsSelecting] = useState(false);
     const [selectedCells, setSelectedCells] = useState([]);
     const [selectionStart, setSelectionStart] = useState(null);
     const [searchQuery, setSearchQuery] = useState('');
+    const [selectionMode, setSelectionMode] = useState(null); // 'book' | 'unbook' | null
+    const [didDrag, setDidDrag] = useState(false);
 
     const handleMouseDown = (station, week, isAvailable, isBooked) => {
-        if (isBooked) {
-            // If clicking on a booked cell, show student info
-            onShowStudentInfo({ lab: data.lab, station, shift: data.shift, week });
-            return;
-        }
-        
-        if (isAvailable) {
+        // Start drag selection for both available (booking) and booked (unbooking)
+        if (isAvailable || isBooked) {
             setIsSelecting(true);
             setSelectionStart({ station, week });
+            setSelectionMode(isBooked ? 'unbook' : 'book');
             setSelectedCells([{ station, week }]);
+            setDidDrag(false);
+            return;
         }
+        // Non-interactive cells: no-op
     };
 
-    const handleMouseEnter = (station, week, isAvailable) => {
-        if (isSelecting && isAvailable && selectionStart) {
+    const handleMouseEnter = (station, week, isAvailable, isBooked) => {
+        if (isSelecting && selectionStart && selectionMode) {
             // Only allow selection in the same row
             if (station === selectionStart.station) {
+                // Filter based on mode
+                const cellMatchesMode = selectionMode === 'book' ? isAvailable : isBooked;
+                if (!cellMatchesMode) return;
+
                 const startWeek = Math.min(selectionStart.week, week);
                 const endWeek = Math.max(selectionStart.week, week);
                 const newSelection = [];
-                
                 for (let w = startWeek; w <= endWeek; w++) {
                     newSelection.push({ station, week: w });
                 }
-                
                 setSelectedCells(newSelection);
+                if (week !== selectionStart.week) {
+                    setDidDrag(true);
+                }
             }
         }
     };
 
     const handleMouseUp = () => {
-        if (isSelecting && selectedCells.length > 0) {
-            // Trigger booking for all selected cells
-            onBookCell({
-                lab: data.lab,
-                station: selectedCells[0].station,
-                shift: data.shift,
-                weeks: selectedCells.map(cell => cell.week)
-            });
+        // If it's a simple click on a booked cell, show info dialog
+        if (selectionMode === 'unbook' && !didDrag && selectedCells.length === 1) {
+            const only = selectedCells[0];
+            onShowStudentInfo({ lab: data.lab, station: only.station, shift: data.shift, week: only.week });
+            // Clear any temp selection highlight
+            setIsSelecting(false);
+            setSelectedCells([]);
+            setSelectionStart(null);
+            setSelectionMode(null);
+            setDidDrag(false);
+            return;
         }
+        // Stop drag, keep current selection visible for confirmation toolbar
         setIsSelecting(false);
+    };
+
+    const clearSelection = () => {
         setSelectedCells([]);
         setSelectionStart(null);
+        setSelectionMode(null);
+        setIsSelecting(false);
+    };
+
+    const confirmSelection = () => {
+        if (!selectionMode || selectedCells.length === 0) return;
+        const payload = {
+            lab: data.lab,
+            station: selectedCells[0].station,
+            shift: data.shift,
+            weeks: selectedCells.map(cell => cell.week)
+        };
+        if (selectionMode === 'book') {
+            onBookCell(payload);
+        } else if (selectionMode === 'unbook') {
+            onUnbookMany(payload);
+        }
+        clearSelection();
     };
 
     const isCellSelected = (station, week) => {
@@ -313,12 +344,24 @@ const AvailabilityGrid = ({ data, selectedCombination, onUnbook, onBookCell, onS
             <div className="p-4 border-b border-gray-200 space-y-3">
                 <div className="flex justify-between items-center">
                     <h2 className="text-xl font-semibold text-slate-800">Availability Grid: {data.lab} ({data.shift})</h2>
-                    <button
-                        onClick={onExport}
-                        className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-sm font-medium"
-                    >
-                        📥 Export Excel
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={onExport}
+                            className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-sm font-medium"
+                        >
+                            📥 Export Excel
+                        </button>
+                        <button
+                            onClick={() => {
+                                if (confirm('Clear ALL bookings across all labs and weeks? This cannot be undone.')) {
+                                    onClearAll();
+                                }
+                            }}
+                            className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors text-sm font-medium"
+                        >
+                            🧹 Clear All
+                        </button>
+                    </div>
                 </div>
                 <div className="flex gap-3">
                     <div className="flex-1">
@@ -348,6 +391,27 @@ const AvailabilityGrid = ({ data, selectedCombination, onUnbook, onBookCell, onS
                         <option value="PM">PM</option>
                     </select>
                 </div>
+                {selectedCells.length > 0 && (
+                    <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded-md flex items-center justify-between gap-2">
+                        <div className="text-sm text-yellow-900">
+                            {selectionMode === 'book' ? 'Selected available weeks' : 'Selected booked weeks'}: {selectedCells.length}
+                        </div>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={confirmSelection}
+                                className={`px-3 py-1 rounded-md text-white text-sm font-medium ${selectionMode === 'book' ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-red-600 hover:bg-red-700'}`}
+                            >
+                                {selectionMode === 'book' ? 'Book Selected' : 'Clear Selected'}
+                            </button>
+                            <button
+                                onClick={clearSelection}
+                                className="px-3 py-1 rounded-md bg-gray-200 text-gray-800 text-sm font-medium hover:bg-gray-300"
+                            >
+                                Cancel Selection
+                            </button>
+                        </div>
+                    </div>
+                )}
                 {searchQuery && (
                     <p className="text-sm text-gray-600">
                         Found {filteredGrid.length} station(s) with "{searchQuery}"
@@ -416,7 +480,7 @@ const AvailabilityGrid = ({ data, selectedCombination, onUnbook, onBookCell, onS
                                             key={index} 
                                             className={`${baseClasses} ${colorClasses}${clickable}${decoration}`} 
                                                 onMouseDown={() => handleMouseDown(stationId, week, isAvailable, isBookedName)}
-                                                onMouseEnter={() => handleMouseEnter(stationId, week, isAvailable)}
+                                                onMouseEnter={() => handleMouseEnter(stationId, week, isAvailable, isBookedName)}
                                             title={hoverText}
                                             style={{ 
                                                 maxWidth: '120px', 
@@ -495,6 +559,18 @@ export default function AvailabilityFinder() {
             setGridData(data);
         } catch (err) {
             setError('Failed to load grid for selected lab.');
+        }
+    };
+
+    const handleClearAll = async () => {
+        try {
+            await resetAllBookings();
+            if (gridData) {
+                const refreshed = await fetchGrid(gridData.lab, gridData.shift);
+                setGridData(refreshed);
+            }
+        } catch (err) {
+            setError(err.response?.data?.error || 'Failed to clear all bookings.');
         }
     };
 
@@ -631,6 +707,18 @@ export default function AvailabilityFinder() {
         }
     }, [gridData]);
 
+    const handleUnbookMany = useCallback(async ({ lab, station, shift, weeks }) => {
+        try {
+            await unbookSlot({ lab, station, shift, weeks });
+            if (gridData) {
+                const refreshed = await fetchGrid(lab, shift);
+                setGridData(refreshed);
+            }
+        } catch (err) {
+            setError(err.response?.data?.error || 'Failed to unbook selected slots.');
+        }
+    }, [gridData]);
+
     const handleBookCell = useCallback(({ lab, station, shift, weeks }) => {
         setCellBookingDialog({ lab, station, shift, weeks });
         setCellBookingName('');
@@ -755,9 +843,11 @@ export default function AvailabilityFinder() {
                                 data={gridData} 
                                 selectedCombination={selectedCombination} 
                                 onUnbook={handleUnbook} 
+                                onUnbookMany={handleUnbookMany}
                                 onBookCell={handleBookCell}
                                 onShowStudentInfo={handleShowStudentInfo}
                                 onExport={handleExport}
+                                onClearAll={handleClearAll}
                                 availableLabs={availableLabs}
                                 onLabChange={handleLabChange}
                             />
@@ -772,6 +862,19 @@ export default function AvailabilityFinder() {
                     <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
                         <h3 className="text-xl font-bold text-slate-800 mb-4">Book Slot{cellBookingDialog.weeks.length > 1 ? 's' : ''}</h3>
                         <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Student Search</label>
+                                <ContactSearch
+                                    onContactSelect={(contact) => {
+                                        setSelectedContact(contact);
+                                        if (contact) {
+                                            setCellBookingName(contact.fullName);
+                                        }
+                                    }}
+                                    selectedContact={selectedContact}
+                                    placeholder="Search by name, email, or student ID..."
+                                />
+                            </div>
                             <div className="space-y-2">
                                 <div>
                                     <span className="font-semibold text-gray-700">Lab:</span>

@@ -177,3 +177,17 @@ export async function exportExcel() {
         throw error;
     }
 }
+
+/**
+ * Resets all bookings across the sheet.
+ * @returns {Promise<object>}
+ */
+export async function resetAllBookings() {
+    try {
+        const res = await axios.post(`${API_BASE}/api/availability/reset`);
+        return res.data;
+    } catch (error) {
+        console.error('Error resetting all bookings:', error.response?.data?.error || error.message);
+        throw error;
+    }
+}
