@@ -1,10 +1,36 @@
 version: '3.8'
 
 services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ndecc
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD env var is required}
+      POSTGRES_DB: ndecc_sched
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ndecc -d ndecc_sched"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile.prod
+    environment:
+      DATABASE_URL: postgresql://ndecc:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD env var is required}@postgres:5432/ndecc_sched
+      PORT: 5001
+      NODE_ENV: production
+      HUBSPOT_API_KEY: ${HUBSPOT_API_KEY:-}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET env var is required}
+      ADMIN_PASSWORD_HASH: ${ADMIN_PASSWORD_HASH:?ADMIN_PASSWORD_HASH env var is required}
+    ports:
+      - "5001:5001"
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   frontend:
     build:
@@ -12,3 +38,6 @@ services:
       dockerfile: Dockerfile.prod
     ports:
       - "80:80"
+
+volumes:
+  pgdata:

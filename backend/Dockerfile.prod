@@ -1,22 +1,26 @@
-FROM node:18-alpine AS builder
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Install production dependencies
+# Install all dependencies (need prisma dev dep for generate)
 COPY package*.json ./
-RUN npm install --only=production
+RUN npm install
+
+# Copy prisma schema and generate client
+COPY prisma ./prisma/
+RUN npx prisma generate
 
 # Copy app source
 COPY . .
 
 # --- Final Image ---
-FROM node:18-alpine
+FROM node:20-alpine
 
 WORKDIR /app
 
 # Copy built assets
 COPY --from=builder /app .
 
-# Expose port and start app
-EXPOSE 5000
-CMD ["npm", "start"]
+# Expose port; run migration then start
+EXPOSE 5001
+CMD npx prisma migrate deploy && npm start

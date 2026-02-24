@@ -111,7 +111,7 @@ const ContactSearch = ({ onContactSelect, selectedContact, placeholder = "Search
                         onChange={handleInputChange}
                         onFocus={() => query.trim().length >= 2 && setShowSuggestions(true)}
                         placeholder="Search by name, email, or student ID..."
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
                     />
                 {query && (
                     <button
@@ -124,7 +124,7 @@ const ContactSearch = ({ onContactSelect, selectedContact, placeholder = "Search
                 )}
                 {isLoading && (
                     <div className="absolute right-8 top-1/2 transform -translate-y-1/2">
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-600"></div>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-brand-500"></div>
                     </div>
                 )}
             </div>

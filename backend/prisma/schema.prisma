@@ -1,0 +1,72 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Lab {
+  id       Int       @id @default(autoincrement())
+  name     String    @unique
+  labType  String    @map("lab_type")
+  stations Station[]
+
+  @@map("labs")
+}
+
+model Station {
+  id       Int       @id @default(autoincrement())
+  labId    Int       @map("lab_id")
+  number   Int
+  side     String
+  lab      Lab       @relation(fields: [labId], references: [id])
+  bookings Booking[]
+
+  @@unique([labId, number])
+  @@map("stations")
+}
+
+model Cycle {
+  id          Int         @id @default(autoincrement())
+  name        String      @unique
+  year        Int
+  number      Int
+  locked      Boolean     @default(false)
+  courseCodes String?     @map("course_codes")
+  createdAt   DateTime    @default(now()) @map("created_at")
+  bookings    Booking[]
+  cycleWeeks  CycleWeek[]
+
+  @@unique([year, number])
+  @@map("cycles")
+}
+
+model CycleWeek {
+  id        Int       @id @default(autoincrement())
+  cycleId   Int       @map("cycle_id")
+  week      Int
+  startDate DateTime? @map("start_date")
+  endDate   DateTime? @map("end_date")
+  cycle     Cycle     @relation(fields: [cycleId], references: [id])
+
+  @@unique([cycleId, week])
+  @@map("cycle_weeks")
+}
+
+model Booking {
+  id          Int      @id @default(autoincrement())
+  cycleId     Int      @map("cycle_id")
+  stationId   Int      @map("station_id")
+  shift       String
+  week        Int
+  traineeName String   @map("trainee_name")
+  contactId   String?  @map("contact_id")
+  bookedAt    DateTime @default(now()) @map("booked_at")
+  cycle       Cycle    @relation(fields: [cycleId], references: [id])
+  station     Station  @relation(fields: [stationId], references: [id])
+
+  @@unique([cycleId, stationId, shift, week])
+  @@map("bookings")
+}

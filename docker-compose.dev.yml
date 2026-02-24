@@ -1,18 +1,51 @@
 version: '3.8'
 
 services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ndecc
+      POSTGRES_PASSWORD: ndecc_dev
+      POSTGRES_DB: ndecc_sched
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ndecc -d ndecc_sched"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile.dev
+    environment:
+      DATABASE_URL: postgresql://ndecc:ndecc_dev@postgres:5432/ndecc_sched
+      PORT: 5001
+      HUBSPOT_API_KEY: ${HUBSPOT_API_KEY:-}
+    ports:
+      - "5001:5001"
     volumes:
       - ./backend:/app
       - /app/node_modules
+      - /app/prisma/migrations
+    depends_on:
+      postgres:
+        condition: service_healthy
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile.dev
+    environment:
+      VITE_API_BASE: http://localhost:5001
+    ports:
+      - "5173:5173"
     volumes:
       - ./frontend:/app
       - /app/node_modules
+
+volumes:
+  pgdata:

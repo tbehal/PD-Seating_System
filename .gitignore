@@ -69,3 +69,8 @@ jspm_packages/
 *.temp
 
 
+
+# SQLite database files
+*.db
+*.db-shm
+*.db-wal

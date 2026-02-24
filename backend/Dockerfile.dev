@@ -1,4 +1,4 @@
-FROM node:18-alpine
+FROM node:20-alpine
 
 WORKDIR /app
 
@@ -6,9 +6,13 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install
 
+# Copy prisma schema and generate client
+COPY prisma ./prisma/
+RUN npx prisma generate
+
 # Copy app source
 COPY . .
 
 # Expose port and start dev server
 EXPOSE 5001
-CMD ["npm", "run", "dev"]
+CMD npx prisma migrate deploy && npm run dev
