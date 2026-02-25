@@ -1,6 +1,77 @@
 
 # Changelog
 
+## v2.4.0 — Analytics Dashboard (2026-02-25)
+
+Added a full-page analytics dashboard that visualizes seating occupancy and registration data with interactive charts, multi-select filters, and AM/PM/Both shift toggle.
+
+### New Files
+
+| File | Purpose |
+|------|---------|
+| `backend/src/schemas/analytics.js` | Joi validation for analytics query params (year, cycleId, shift) |
+| `backend/src/services/analyticsService.js` | Seating + registration analytics aggregation logic |
+| `backend/src/routes/analytics.js` | Two GET endpoints: `/seating` and `/registration` |
+| `frontend/src/components/AnalyticsDashboard.jsx` | Full analytics dashboard with Recharts visualizations |
+
+### Modified Files
+
+| File | What Changed |
+|------|-------------|
+| `backend/src/app.js` | Mounted analytics router on `/api/v1/analytics` |
+| `frontend/package.json` | Added `recharts` dependency |
+| `frontend/src/api.js` | Added `fetchSeatingAnalytics()` and `fetchRegistrationAnalytics()` |
+| `frontend/src/App.jsx` | Analytics button in header, `currentView === 'analytics'` routing, hides CycleTabs/ViewToggle in analytics view |
+
+### New API Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/v1/analytics/seating?year=2026&cycleId=1` | Seating occupancy analytics with cross-tab matrix |
+| GET | `/api/v1/analytics/registration?year=2026&shift=BOTH&cycleId=1` | Registration analytics (payment, cycle count, programs) |
+
+### Seating Analytics Response
+
+```json
+{
+  "data": {
+    "weekOccupancy": [{ "week": 1, "totalSlots": 266, "booked": 140, "percent": 52.6 }],
+    "labOccupancy": [{ "lab": "Lab A", "totalSlots": 912, "booked": 450, "percent": 49.3 }],
+    "shiftOccupancy": [{ "shift": "AM", "totalSlots": 1596, "booked": 800, "percent": 50.1 }],
+    "summary": { "totalSlots": 3192, "totalBooked": 1450, "overallPercent": 45.4, "numCycles": 1 },
+    "bookingMatrix": { "Lab A": { "1": 20, "2": 15 } },
+    "labStationCounts": { "Lab A": 38 }
+  }
+}
+```
+
+### Registration Analytics Response
+
+```json
+{
+  "data": {
+    "totalStudents": 85,
+    "paymentDistribution": [{ "status": "Closed Won", "count": 60 }],
+    "cycleCountDistribution": [{ "cycleNumber": 1, "count": 45 }],
+    "programCounts": { "roadmap": 30, "afk": 12, "acj": 8 },
+    "warnings": [{ "cycleId": 2, "cycleName": "Cycle 2", "shift": "AM", "error": "HubSpot API not configured" }]
+  }
+}
+```
+
+### Key Features
+
+- **7 chart types:** Weekly occupancy (bar), Lab occupancy (bar), Shift comparison (bar), Payment status (pie), Program participation (horizontal bar), Cycle count distribution (bar)
+- **4 summary cards:** Overall occupancy %, Total students, AM occupancy %, PM occupancy %
+- **Cross-axis filtering:** Weekly chart filterable by labs, Lab chart filterable by weeks (multi-select dropdowns)
+- **AM/PM/Both shift toggle:** Registration analytics supports combined view
+- **Parallel HubSpot calls:** `Promise.allSettled` for multi-cycle fetch (4 cycles = ~2s instead of ~8s sequential)
+- **Per-cycle warnings:** Failed cycles reported in response instead of silently dropped
+- **Smart deduplication:** contactId-based with firstName+lastName fallback for null IDs
+- **Backend cross-tab matrix:** `bookingMatrix` (lab × week) enables frontend-side filtering without extra API calls
+
+---
+
 ## v2.3.0 — Backend Architecture Overhaul (2026-02-24)
 
 Extracted service layer, added Joi schema validation, standardized API response envelope, added global error handler, and versioned all protected endpoints under `/api/v1/`.

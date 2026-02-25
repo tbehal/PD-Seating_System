@@ -1,6 +1,6 @@
 # Lab Availability Manager (SLAM) — Feature Reference
 
-> Last updated: 2026-02-24
+> Last updated: 2026-02-25
 
 This document lists every feature in the application, which files implement it, which API endpoints power it, and which tests cover it. Use this as a map when working on the codebase.
 
@@ -44,11 +44,13 @@ backend/
       grid.js           # Joi schemas for grid + export
       contacts.js       # Joi schemas for contact endpoints
       registration.js   # Joi schemas for registration endpoints
+      analytics.js      # Joi schemas for analytics endpoints
     services/
       cycleService.js   # Cycle CRUD business logic
       bookingService.js # Booking logic (book, unbook, find, reset)
       gridService.js    # Grid builder + CSV export
       registrationService.js # Registration list from HubSpot
+      analyticsService.js # Seating + registration analytics aggregation
     routes/
       auth.js           # Login, logout, auth check (/api/auth/*)
       cycles.js         # Cycle CRUD (thin adapter → cycleService)
@@ -56,6 +58,7 @@ backend/
       bookings.js       # Book/unbook/find/reset (thin adapter → bookingService)
       contacts.js       # HubSpot contact endpoints
       registration.js   # Registration list + CSV export
+      analytics.js       # Analytics dashboard endpoints (seating + registration)
   prisma/
     schema.prisma       # Database schema
     seed.js             # Seeds 6 labs, 133 stations, initial cycle
@@ -86,6 +89,7 @@ frontend/
       CellBookingDialog.jsx  # Modal for booking from grid cell click
       ContactSearch.jsx      # HubSpot contact search dropdown
       RegistrationList.jsx   # Registration list table (live HubSpot data)
+      AnalyticsDashboard.jsx # Analytics dashboard with charts (Recharts)
     __tests__/
       setup.js                   # Imports jest-dom matchers
       AvailabilityGrid.test.jsx  # 6 tests for grid component
@@ -323,6 +327,60 @@ Per-cycle table showing all enrolled students, pulled live from HubSpot by match
 
 ---
 
+### 8. Analytics Dashboard
+
+Full-page analytics dashboard accessible via the "Analytics" button in the header. Visualizes seating occupancy (from DB bookings) and registration data (from HubSpot) with interactive charts.
+
+| Action | UI | API Endpoint | Backend File | Frontend File |
+|--------|-----|-------------|-------------|---------------|
+| Open analytics | Click "Analytics" button in header | — | — | `App.jsx` |
+| View seating stats | Auto-loads when year/cycle changes | `GET /api/v1/analytics/seating?year=2026&cycleId=1` | `routes/analytics.js` | `AnalyticsDashboard.jsx` |
+| View registration stats | Auto-loads when year/cycle/shift changes | `GET /api/v1/analytics/registration?year=2026&shift=AM` | `routes/analytics.js` | `AnalyticsDashboard.jsx` |
+| Filter by year | Year dropdown | (changes query param) | — | `AnalyticsDashboard.jsx` |
+| Filter by cycle | Cycle dropdown ("All Cycles" or specific) | (changes query param) | — | `AnalyticsDashboard.jsx` |
+| Switch shift | AM / PM / Both toggle | (changes query param) | — | `AnalyticsDashboard.jsx` |
+| Filter weekly chart by labs | Multi-select lab dropdown on chart | (frontend only) | — | `AnalyticsDashboard.jsx` |
+| Filter lab chart by weeks | Multi-select week dropdown on chart | (frontend only) | — | `AnalyticsDashboard.jsx` |
+| Back to grid | Click "Back" button | — | — | `AnalyticsDashboard.jsx` |
+
+**Summary Cards (4):**
+- Overall Occupancy % (seating)
+- Total Students (registration)
+- AM Occupancy % (seating)
+- PM Occupancy % (seating)
+
+**Charts (7):**
+
+| Chart | Type | Data Source | Filter |
+|-------|------|------------|--------|
+| Weekly Occupancy | Bar | Seating (DB) | Multi-select labs |
+| Lab Occupancy | Bar | Seating (DB) | Multi-select weeks |
+| Shift Comparison | Bar | Seating (DB) | — |
+| Payment Status | Pie | Registration (HubSpot) | Shift toggle |
+| Program Participation | Horizontal Bar | Registration (HubSpot) | Shift toggle |
+| Cycle Count Distribution | Bar | Registration (HubSpot) | Shift toggle |
+
+**Cross-axis filtering:**
+- Backend returns a `bookingMatrix` (lab × week cross-tabulation) alongside pre-aggregated data
+- Frontend recomputes occupancy percentages client-side when filters are applied
+- "All" selected = uses pre-aggregated data (no recalculation)
+
+**Seating analytics aggregation:**
+- Resolves cycles for the year (or single cycle if specified)
+- Fetches all stations with lab info + all bookings for those cycles
+- Computes: weekOccupancy (12 weeks), labOccupancy (per lab), shiftOccupancy (AM/PM), summary
+
+**Registration analytics aggregation:**
+- Calls `registrationService.getRegistrationList` for each cycle in scope (parallel via `Promise.allSettled`)
+- Supports `BOTH` shift: fetches AM + PM and merges
+- Deduplicates by contactId (fallback: firstName + lastName)
+- Returns warnings for failed cycles (e.g., HubSpot down) instead of silently dropping
+- Computes: totalStudents, paymentDistribution, cycleCountDistribution, programCounts
+
+**Dependencies:** `recharts` (React charting library)
+
+---
+
 ## Architecture (Phase 2)
 
 **Request flow:** Client → Auth middleware → Joi validation → Route (thin adapter) → Service (business logic) → Prisma → DB
@@ -408,6 +466,13 @@ Cycle (id, name, year, number, locked, courseCodes?, createdAt)
 | GET | `/api/v1/availability/contacts/search` | Search HubSpot contacts |
 | GET | `/api/v1/availability/contacts/:id` | Get contact by ID |
 | PATCH | `/api/v1/availability/contacts/:id/payment-status` | Update payment status |
+
+### Analytics (`/api/v1/analytics`) — `routes/analytics.js`
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/v1/analytics/seating?year=2026&cycleId=1` | Seating occupancy analytics (week, lab, shift breakdown + cross-tab matrix) |
+| GET | `/api/v1/analytics/registration?year=2026&shift=AM&cycleId=1` | Registration analytics (payment, cycle count, programs). Shift: AM/PM/BOTH |
 
 ---
 
