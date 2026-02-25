@@ -12,6 +12,7 @@ const gridRouter = require('./routes/grid');
 const bookingsRouter = require('./routes/bookings');
 const contactsRouter = require('./routes/contacts');
 const registrationRouter = require('./routes/registration');
+const analyticsRouter = require('./routes/analytics');
 const authRouter = require('./routes/auth');
 
 const app = express();
@@ -72,6 +73,7 @@ v1.use('/cycles', registrationRouter);
 v1.use('/availability', gridRouter);
 v1.use('/availability', bookingsRouter);
 v1.use('/availability', contactsRouter);
+v1.use('/analytics', analyticsRouter);
 app.use('/api/v1', requireAuth, v1);
 
 // Global error handler (must be last)

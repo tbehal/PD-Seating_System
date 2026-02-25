@@ -184,6 +184,32 @@ export async function updateCourseCodes(cycleId, courseCodes) {
   return res.data.data;
 }
 
+// --- Analytics endpoints ---
+
+export async function fetchSeatingAnalytics(year, cycleId = null) {
+  try {
+    const res = await axios.get(`${API_BASE}/api/v1/analytics/seating`, {
+      params: { year, ...(cycleId && { cycleId }) },
+    });
+    return res.data.data;
+  } catch (error) {
+    console.error('Error fetching seating analytics:', error.response?.data?.error || error.message);
+    throw error;
+  }
+}
+
+export async function fetchRegistrationAnalytics(year, shift, cycleId = null) {
+  try {
+    const res = await axios.get(`${API_BASE}/api/v1/analytics/registration`, {
+      params: { year, shift, ...(cycleId && { cycleId }) },
+    });
+    return res.data.data;
+  } catch (error) {
+    console.error('Error fetching registration analytics:', error.response?.data?.error || error.message);
+    throw error;
+  }
+}
+
 // --- HubSpot Contact endpoints (unchanged) ---
 
 export async function searchContacts(query, limit = 10) {

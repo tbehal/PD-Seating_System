@@ -15,6 +15,7 @@ import AvailabilityGrid from './components/AvailabilityGrid';
 import StudentInfoDialog from './components/StudentInfoDialog';
 import CellBookingDialog from './components/CellBookingDialog';
 import RegistrationList from './components/RegistrationList';
+import AnalyticsDashboard from './components/AnalyticsDashboard';
 
 export default function App() {
   // Auth state
@@ -340,6 +341,16 @@ export default function App() {
           </div>
           <div className="flex items-center gap-4">
             <button
+              onClick={() => setCurrentView('analytics')}
+              className={`px-3 py-1.5 text-sm border rounded-lg transition-colors ${
+                currentView === 'analytics'
+                  ? 'bg-brand-500 text-white border-brand-500'
+                  : 'text-gray-600 hover:text-gray-900 border-gray-300 hover:bg-gray-100'
+              }`}
+            >
+              Analytics
+            </button>
+            <button
               onClick={handleLogout}
               className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors"
             >
@@ -349,107 +360,116 @@ export default function App() {
           </div>
         </header>
 
-        {/* Cycle tabs */}
-        <div className="mb-4">
-          <CycleTabs
+        {currentView === 'analytics' ? (
+          <AnalyticsDashboard
             cycles={cycles}
-            activeCycleId={activeCycleId}
-            onSelectCycle={setActiveCycleId}
-            onCreateCycle={handleCreateCycle}
-            onDeleteCycle={handleDeleteCycle}
-            onLockCycle={handleLockCycle}
-            onUnlockCycle={handleUnlockCycle}
+            onBack={() => setCurrentView('grid')}
           />
-        </div>
-
-        {/* View toggle */}
-        <div className="mb-4 flex gap-1 bg-gray-100 p-1 rounded-lg w-fit">
-          <button
-            onClick={() => setCurrentView('grid')}
-            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-              currentView === 'grid'
-                ? 'bg-white text-brand-700 shadow-sm'
-                : 'text-gray-600 hover:text-gray-800'
-            }`}
-          >
-            Seating Grid
-          </button>
-          <button
-            onClick={() => setCurrentView('registration')}
-            className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-              currentView === 'registration'
-                ? 'bg-white text-brand-700 shadow-sm'
-                : 'text-gray-600 hover:text-gray-800'
-            }`}
-          >
-            Registration List
-          </button>
-        </div>
-
-        {currentView === 'grid' ? (
+        ) : (
           <>
-            {/* Filter bar */}
-            <div className="mb-6 bg-white p-4 rounded-xl shadow-sm border border-gray-200">
-              <FilterBar filters={filters} onChange={setFilters} />
+            {/* Cycle tabs */}
+            <div className="mb-4">
+              <CycleTabs
+                cycles={cycles}
+                activeCycleId={activeCycleId}
+                onSelectCycle={setActiveCycleId}
+                onCreateCycle={handleCreateCycle}
+                onDeleteCycle={handleDeleteCycle}
+                onLockCycle={handleLockCycle}
+                onUnlockCycle={handleUnlockCycle}
+              />
             </div>
 
-            {/* Top row: Search + Booking + Results side by side */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-              <div className="bg-white p-5 rounded-xl shadow-md border border-gray-200">
-                <h2 className="text-lg font-semibold text-slate-800 mb-3">Search Criteria</h2>
-                <SearchCriteriaForm
-                  criteria={searchCriteria}
-                  onInputChange={handleCriteriaChange}
-                  onSearch={handleSearch}
-                  isLoading={isLoading}
-                />
-              </div>
-              <div className="bg-white p-5 rounded-xl shadow-md border border-gray-200">
-                <BookingSection
-                  traineeName={traineeName}
-                  onTraineeNameChange={e => setTraineeName(e.target.value)}
-                  selectedContact={selectedContact}
-                  onContactSelect={setSelectedContact}
-                  onBook={handleBookSlot}
-                  isBooking={isBooking}
+            {/* View toggle */}
+            <div className="mb-4 flex gap-1 bg-gray-100 p-1 rounded-lg w-fit">
+              <button
+                onClick={() => setCurrentView('grid')}
+                className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                  currentView === 'grid'
+                    ? 'bg-white text-brand-700 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-800'
+                }`}
+              >
+                Seating Grid
+              </button>
+              <button
+                onClick={() => setCurrentView('registration')}
+                className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                  currentView === 'registration'
+                    ? 'bg-white text-brand-700 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-800'
+                }`}
+              >
+                Registration List
+              </button>
+            </div>
+
+            {currentView === 'grid' ? (
+              <>
+                {/* Filter bar */}
+                <div className="mb-6 bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+                  <FilterBar filters={filters} onChange={setFilters} />
+                </div>
+
+                {/* Top row: Search + Booking + Results side by side */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                  <div className="bg-white p-5 rounded-xl shadow-md border border-gray-200">
+                    <h2 className="text-lg font-semibold text-slate-800 mb-3">Search Criteria</h2>
+                    <SearchCriteriaForm
+                      criteria={searchCriteria}
+                      onInputChange={handleCriteriaChange}
+                      onSearch={handleSearch}
+                      isLoading={isLoading}
+                    />
+                  </div>
+                  <div className="bg-white p-5 rounded-xl shadow-md border border-gray-200">
+                    <BookingSection
+                      traineeName={traineeName}
+                      onTraineeNameChange={e => setTraineeName(e.target.value)}
+                      selectedContact={selectedContact}
+                      onContactSelect={setSelectedContact}
+                      onBook={handleBookSlot}
+                      isBooking={isBooking}
+                      selectedCombination={selectedCombination}
+                      error={error}
+                      successMessage={bookingSuccess}
+                      locked={isLocked}
+                    />
+                  </div>
+                  <div>
+                    <SearchResults
+                      results={results}
+                      selected={selectedCombination}
+                      onSelect={handleSelectCombination}
+                      isLoading={isLoading}
+                      isCollapsed={isResultsCollapsed}
+                      onToggleCollapse={() => setIsResultsCollapsed(!isResultsCollapsed)}
+                    />
+                  </div>
+                </div>
+
+                {/* Full-width grid below — always visible */}
+                <AvailabilityGrid
+                  data={gridData}
                   selectedCombination={selectedCombination}
-                  error={error}
-                  successMessage={bookingSuccess}
+                  onBookCell={handleBookCell}
+                  onUnbookMany={handleUnbookMany}
+                  onShowStudentInfo={handleShowStudentInfo}
+                  onExport={handleExport}
+                  onClearAll={handleClearAll}
+                  onUpdateWeekDates={handleUpdateWeekDates}
                   locked={isLocked}
                 />
-              </div>
-              <div>
-                <SearchResults
-                  results={results}
-                  selected={selectedCombination}
-                  onSelect={handleSelectCombination}
-                  isLoading={isLoading}
-                  isCollapsed={isResultsCollapsed}
-                  onToggleCollapse={() => setIsResultsCollapsed(!isResultsCollapsed)}
-                />
-              </div>
-            </div>
-
-            {/* Full-width grid below — always visible */}
-            <AvailabilityGrid
-              data={gridData}
-              selectedCombination={selectedCombination}
-              onBookCell={handleBookCell}
-              onUnbookMany={handleUnbookMany}
-              onShowStudentInfo={handleShowStudentInfo}
-              onExport={handleExport}
-              onClearAll={handleClearAll}
-              onUpdateWeekDates={handleUpdateWeekDates}
-              locked={isLocked}
-            />
+              </>
+            ) : (
+              <RegistrationList
+                cycleId={activeCycleId}
+                cycleName={activeCycle?.name || ''}
+                courseCodes={activeCycle?.courseCodes || []}
+                onUpdateCourseCodes={handleUpdateCourseCodes}
+              />
+            )}
           </>
-        ) : (
-          <RegistrationList
-            cycleId={activeCycleId}
-            cycleName={activeCycle?.name || ''}
-            courseCodes={activeCycle?.courseCodes || []}
-            onUpdateCourseCodes={handleUpdateCourseCodes}
-          />
         )}
       </div>
 
