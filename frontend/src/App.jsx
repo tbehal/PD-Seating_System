@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { Toaster } from 'sonner';
 import {
   fetchCycles, createCycle, deleteCycle, lockCycle, unlockCycle, updateCycleWeeks,
   fetchGrid, findCombinations, bookSlot, unbookSlot, resetAllBookings, exportCycle,
@@ -490,6 +491,7 @@ export default function App() {
         onClose={() => setStudentInfoDialog(null)}
         locked={isLocked}
       />
+      <Toaster richColors position="top-right" />
     </div>
   );
 }

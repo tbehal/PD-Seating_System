@@ -1,6 +1,40 @@
 
 # Changelog
 
+## v2.5.0 — PDF Export for Analytics (2026-02-27)
+
+Added one-click PDF export to the Analytics Dashboard. Captures all summary cards and charts as a multi-page A4 landscape report with filter metadata in the header.
+
+### Modified Files
+
+| File | What Changed |
+|------|-------------|
+| `frontend/src/components/AnalyticsDashboard.jsx` | PDF export button, `handleExportPDF` (html-to-image + jsPDF), frosted glass overlay, Escape-to-cancel, `data-pdf-hide` on interactive elements, `display: none` before capture, per-section capture with smart page breaks, canvas memory cleanup, named PDF constants |
+| `frontend/src/App.jsx` | Added Sonner `<Toaster>` component for toast notifications |
+| `frontend/package.json` | Added `html-to-image`, `jspdf`, `sonner` dependencies |
+
+### How It Works
+
+1. User clicks "Export PDF" → button disables, frosted overlay appears
+2. `html-to-image` and `jspdf` are dynamically imported (not in initial bundle)
+3. Interactive elements (lab/week filters, shift toggles) hidden via `display: none`
+4. Each dashboard section (summary cards, chart rows, individual charts) captured as a separate canvas at 1.5x resolution
+5. Sections placed into A4 landscape PDF with page breaks between sections — no chart is ever cut in half
+6. PDF header: "Analytics Report", generation timestamp, active filters (year, cycle, shift)
+7. Canvas memory released after each section (`canvas.width = 0`)
+8. Hidden elements restored, overlay dismissed, success toast shown
+9. Filename: `analytics-report-{year}-{cycle}-{HHmm}.pdf`
+
+### Key Design Decisions
+
+- **html-to-image over html2canvas**: Better SVG rendering for Recharts charts (uses foreignObject serialization)
+- **Per-section capture over single canvas**: Prevents memory bombs on large dashboards, enables natural page breaks
+- **PNG over JPEG**: Crisp chart lines and text without compression artifacts
+- **Dynamic imports**: Zero impact on initial bundle size (~400KB combined loaded only on export click)
+- **Escape-to-cancel**: `exportCancelledRef` checked after each section capture, skips `pdf.save()` if cancelled
+
+---
+
 ## v2.4.0 — Analytics Dashboard (2026-02-25)
 
 Added a full-page analytics dashboard that visualizes seating occupancy and registration data with interactive charts, multi-select filters, and AM/PM/Both shift toggle.

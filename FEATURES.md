@@ -342,6 +342,18 @@ Full-page analytics dashboard accessible via the "Analytics" button in the heade
 | Filter weekly chart by labs | Multi-select lab dropdown on chart | (frontend only) | — | `AnalyticsDashboard.jsx` |
 | Filter lab chart by weeks | Multi-select week dropdown on chart | (frontend only) | — | `AnalyticsDashboard.jsx` |
 | Back to grid | Click "Back" button | — | — | `AnalyticsDashboard.jsx` |
+| Export PDF | Click "Export PDF" button | (frontend only) | — | `AnalyticsDashboard.jsx` |
+
+**PDF Export:**
+- Captures all summary cards + charts as a multi-page A4 landscape PDF
+- Uses `html-to-image` (per-section capture) + `jsPDF` — both dynamically imported on click (zero bundle impact)
+- PDF header includes: report title, generation timestamp, active filter values (year, cycle, shift)
+- Interactive elements (lab/week filters, shift toggles) are hidden from capture via `data-pdf-hide` + `display: none`
+- Smart page breaks: each dashboard section captured individually, new page only between sections (never cuts a chart in half)
+- Cancel support: press Escape during export to abort
+- Feedback: Sonner toasts for success/error, frosted glass overlay during capture
+- Controls (Back, Year, Cycle selects) disabled during export to prevent race conditions
+- Canvas memory released after each section capture
 
 **Summary Cards (4):**
 - Overall Occupancy % (seating)
@@ -377,7 +389,7 @@ Full-page analytics dashboard accessible via the "Analytics" button in the heade
 - Returns warnings for failed cycles (e.g., HubSpot down) instead of silently dropping
 - Computes: totalStudents, paymentDistribution, cycleCountDistribution, programCounts
 
-**Dependencies:** `recharts` (React charting library)
+**Dependencies:** `recharts` (charting), `html-to-image` (DOM-to-canvas), `jspdf` (PDF generation), `sonner` (toast notifications)
 
 ---
 

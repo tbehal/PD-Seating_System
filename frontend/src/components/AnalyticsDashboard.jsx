@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   ResponsiveContainer, PieChart, Pie, Cell,
 } from 'recharts';
 import { fetchSeatingAnalytics, fetchRegistrationAnalytics } from '../api';
+import { toast } from 'sonner';
 
 // Brand palette (recharts needs hex strings, not Tailwind classes)
 const BRAND = {
@@ -20,6 +21,12 @@ const PROGRAM_COLORS = {
   AFK: '#10b981',
   ACJ: '#f59e0b',
 };
+
+// ─── PDF export config ───────────────────────────────────────────────────────
+const PDF_SCALE = 1.5;
+const PDF_MARGIN_MM = 10;
+const PDF_HEADER_HEIGHT_MM = 25;
+const PDF_SECTION_GAP_MM = 3;
 
 const ORDINAL_SUFFIX = (n) => {
   const s = ['th', 'st', 'nd', 'rd'];
@@ -390,6 +397,10 @@ export default function AnalyticsDashboard({ cycles, onBack }) {
   const [seatingError, setSeatingError] = useState(null);
   const [registrationError, setRegistrationError] = useState(null);
 
+  const printRef = useRef(null);
+  const exportCancelledRef = useRef(false);
+  const [exporting, setExporting] = useState(false);
+
   const cyclesForYear = useMemo(
     () => (cycles || []).filter(c => c.year === selectedYear),
     [cycles, selectedYear]
@@ -464,6 +475,17 @@ export default function AnalyticsDashboard({ cycles, onBack }) {
 
     return () => { cancelled = true; };
   }, [selectedYear, selectedCycleId, shift, cyclesForYear]);
+
+  useEffect(() => {
+    if (!exporting) return;
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') {
+        exportCancelledRef.current = true;
+      }
+    };
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [exporting]);
 
   // Derive summary values
   const summary = seatingData?.summary ?? {};
@@ -550,13 +572,142 @@ export default function AnalyticsDashboard({ cycles, onBack }) {
 
   const noCyclesForYear = cyclesForYear.length === 0;
 
+  const handleExportPDF = async () => {
+    if (!printRef.current) return;
+
+    setExporting(true);
+    exportCancelledRef.current = false;
+    let hiddenElements = [];
+
+    try {
+      const [{ toCanvas }, { default: jsPDF }] = await Promise.all([
+        import('html-to-image'),
+        import('jspdf'),
+      ]);
+
+      if (exportCancelledRef.current || !printRef.current) return;
+
+      const pdf = new jsPDF('landscape', 'mm', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const contentWidth = pdfWidth - PDF_MARGIN_MM * 2;
+      const contentStartY = PDF_MARGIN_MM + PDF_HEADER_HEIGHT_MM;
+
+      // ── PDF Header ──
+      pdf.setFontSize(16);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(0, 0, 0);
+      pdf.text('Analytics Report', PDF_MARGIN_MM, PDF_MARGIN_MM + 8);
+
+      pdf.setFontSize(9);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(100, 100, 100);
+      const now = new Date();
+      const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      pdf.text(
+        `Generated: ${dateStr} ${now.toLocaleTimeString()}`,
+        PDF_MARGIN_MM,
+        PDF_MARGIN_MM + 15,
+      );
+
+      const filterParts = [];
+      if (selectedYear) filterParts.push(`Year: ${selectedYear}`);
+      if (selectedCycleId) {
+        const name = cyclesForYear.find(c => c.id === selectedCycleId)?.name || selectedCycleId;
+        filterParts.push(`Cycle: ${name}`);
+      }
+      if (shift) filterParts.push(`Shift: ${shift === 'BOTH' ? 'AM + PM' : shift}`);
+      if (filterParts.length > 0) {
+        pdf.text(filterParts.join('  |  '), PDF_MARGIN_MM, PDF_MARGIN_MM + 21);
+      }
+
+      pdf.setDrawColor(200, 200, 200);
+      pdf.line(PDF_MARGIN_MM, contentStartY - 2, pdfWidth - PDF_MARGIN_MM, contentStartY - 2);
+
+      // ── Hide interactive elements before capture ──
+      hiddenElements = Array.from(printRef.current.querySelectorAll('[data-pdf-hide]'));
+      hiddenElements.forEach(el => { el.style.display = 'none'; });
+
+      // ── Capture each section individually (smart page breaks) ──
+      const sections = Array.from(printRef.current.children);
+      let currentY = contentStartY;
+      let isFirstPage = true;
+
+      for (const section of sections) {
+        if (exportCancelledRef.current) break;
+
+        const canvas = await toCanvas(section, {
+          pixelRatio: PDF_SCALE,
+          backgroundColor: '#ffffff',
+        });
+
+        if (exportCancelledRef.current) {
+          canvas.width = 0;
+          canvas.height = 0;
+          break;
+        }
+
+        const imgData = canvas.toDataURL('image/png');
+        const ratio = contentWidth / canvas.width;
+        const scaledHeight = canvas.height * ratio;
+
+        const pageBottom = pdfHeight - PDF_MARGIN_MM;
+        const availableOnPage = pageBottom - currentY;
+
+        // Start new page if section doesn't fit and we're not at the top
+        const pageTop = isFirstPage ? contentStartY : PDF_MARGIN_MM;
+        if (scaledHeight > availableOnPage && currentY > pageTop + 1) {
+          pdf.addPage();
+          currentY = PDF_MARGIN_MM;
+          isFirstPage = false;
+        }
+
+        pdf.addImage(imgData, 'PNG', PDF_MARGIN_MM, currentY, contentWidth, scaledHeight);
+        currentY += scaledHeight + PDF_SECTION_GAP_MM;
+
+        // Release GPU-backed canvas memory
+        canvas.width = 0;
+        canvas.height = 0;
+      }
+
+      if (!exportCancelledRef.current) {
+        const timestamp = `${dateStr}-${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`;
+        const cycleSuffix = selectedCycleId
+          ? `-${(cyclesForYear.find(c => c.id === selectedCycleId)?.name || 'cycle').replace(/\s+/g, '-')}`
+          : '';
+        pdf.save(`analytics-report-${selectedYear || 'all'}${cycleSuffix}-${timestamp}.pdf`);
+        toast.success('PDF exported successfully');
+      }
+    } catch (err) {
+      console.error('PDF export failed:', err);
+      toast.error('PDF export failed. Please try again.');
+    } finally {
+      hiddenElements.forEach(el => { el.style.display = ''; });
+      setExporting(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
+      {exporting && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/70 backdrop-blur-md">
+          <div className="flex flex-col items-center gap-3">
+            <svg className="animate-spin h-8 w-8 text-brand-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <p className="text-sm font-medium text-gray-700">Generating PDF...</p>
+            <p className="text-xs text-gray-400">Press Esc to cancel</p>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-wrap items-center gap-3">
         <button
           onClick={onBack}
-          className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+          disabled={exporting}
+          className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -571,7 +722,8 @@ export default function AnalyticsDashboard({ cycles, onBack }) {
           <select
             value={selectedYear}
             onChange={e => setSelectedYear(Number(e.target.value))}
-            className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white text-gray-700"
+            disabled={exporting}
+            className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {availableYears.map(y => (
               <option key={y} value={y}>{y}</option>
@@ -582,13 +734,38 @@ export default function AnalyticsDashboard({ cycles, onBack }) {
           <select
             value={selectedCycleId ?? ''}
             onChange={e => setSelectedCycleId(e.target.value ? Number(e.target.value) : null)}
-            className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white text-gray-700"
+            disabled={exporting}
+            className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <option value="">All Cycles</option>
             {cyclesForYear.map(c => (
               <option key={c.id} value={c.id}>{c.name}</option>
             ))}
           </select>
+
+          {/* Export PDF button */}
+          <button
+            onClick={handleExportPDF}
+            disabled={exporting || seatingLoading || registrationLoading || noCyclesForYear}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-brand-500 text-white rounded-lg hover:bg-brand-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium"
+          >
+            {exporting ? (
+              <>
+                <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Exporting...
+              </>
+            ) : (
+              <>
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Export PDF
+              </>
+            )}
+          </button>
         </div>
       </div>
 
@@ -598,7 +775,7 @@ export default function AnalyticsDashboard({ cycles, onBack }) {
           No data available for selected filters.
         </div>
       ) : (
-        <>
+        <div ref={printRef} className="space-y-6">
           {/* Summary cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <SummaryCard
@@ -628,7 +805,7 @@ export default function AnalyticsDashboard({ cycles, onBack }) {
             <ChartCard title="Weekly Occupancy" loading={seatingLoading} error={seatingError}>
               {seatingData?.weekOccupancy?.length ? (
                 <>
-                  <div className="flex items-center gap-2 -mt-2 mb-3">
+                  <div className="flex items-center gap-2 -mt-2 mb-3" data-pdf-hide>
                     <span className="text-xs text-gray-500">Filter by labs:</span>
                     <MultiSelectFilter
                       label="Labs"
@@ -647,7 +824,7 @@ export default function AnalyticsDashboard({ cycles, onBack }) {
             <ChartCard title="Lab Occupancy" loading={seatingLoading} error={seatingError}>
               {seatingData?.labOccupancy?.length ? (
                 <>
-                  <div className="flex items-center gap-2 -mt-2 mb-3">
+                  <div className="flex items-center gap-2 -mt-2 mb-3" data-pdf-hide>
                     <span className="text-xs text-gray-500">Filter by weeks:</span>
                     <MultiSelectFilter
                       label="Weeks"
@@ -674,28 +851,28 @@ export default function AnalyticsDashboard({ cycles, onBack }) {
             )}
           </ChartCard>
 
-          {/* Registration section header */}
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-gray-900">Registration Analytics</h3>
-            <div className="flex gap-1 bg-gray-100 p-1 rounded-lg">
-              {['AM', 'PM', 'BOTH'].map(s => (
-                <button
-                  key={s}
-                  onClick={() => setShift(s)}
-                  className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                    shift === s
-                      ? 'bg-white text-brand-700 shadow-sm'
-                      : 'text-gray-600 hover:text-gray-800'
-                  }`}
-                >
-                  {s === 'BOTH' ? 'Both' : s}
-                </button>
-              ))}
+          {/* Registration section (header + charts wrapped for PDF capture) */}
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900">Registration Analytics</h3>
+              <div className="flex gap-1 bg-gray-100 p-1 rounded-lg" data-pdf-hide>
+                {['AM', 'PM', 'BOTH'].map(s => (
+                  <button
+                    key={s}
+                    onClick={() => setShift(s)}
+                    className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                      shift === s
+                        ? 'bg-white text-brand-700 shadow-sm'
+                        : 'text-gray-600 hover:text-gray-800'
+                    }`}
+                  >
+                    {s === 'BOTH' ? 'Both' : s}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
 
-          {/* Registration charts row */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <ChartCard title="Payment Status" loading={registrationLoading} error={registrationError}>
               {registrationData?.paymentDistribution?.length ? (
                 <PaymentPieChart data={registrationData.paymentDistribution} />
@@ -711,6 +888,7 @@ export default function AnalyticsDashboard({ cycles, onBack }) {
                 <p className="text-gray-500 text-center py-12 text-sm">No program data available.</p>
               )}
             </ChartCard>
+            </div>
           </div>
 
           {/* Cycle count distribution (full width) */}
@@ -721,7 +899,7 @@ export default function AnalyticsDashboard({ cycles, onBack }) {
               <p className="text-gray-500 text-center py-12 text-sm">No cycle count data available.</p>
             )}
           </ChartCard>
-        </>
+        </div>
       )}
     </div>
   );
