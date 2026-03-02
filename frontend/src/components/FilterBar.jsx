@@ -8,7 +8,9 @@ export default function FilterBar({ filters, onChange }) {
   return (
     <div className="flex items-center gap-4 flex-wrap">
       <div className="flex items-center gap-2">
-        <label htmlFor="filter-shift" className="text-sm font-medium text-gray-700">Shift</label>
+        <label htmlFor="filter-shift" className="text-sm font-medium text-gray-700">
+          Shift
+        </label>
         <select
           id="filter-shift"
           name="shift"
@@ -22,7 +24,9 @@ export default function FilterBar({ filters, onChange }) {
       </div>
 
       <div className="flex items-center gap-2">
-        <label htmlFor="filter-labType" className="text-sm font-medium text-gray-700">Lab Type</label>
+        <label htmlFor="filter-labType" className="text-sm font-medium text-gray-700">
+          Lab Type
+        </label>
         <select
           id="filter-labType"
           name="labType"
@@ -36,7 +40,9 @@ export default function FilterBar({ filters, onChange }) {
       </div>
 
       <div className="flex items-center gap-2">
-        <label htmlFor="filter-side" className="text-sm font-medium text-gray-700">Side</label>
+        <label htmlFor="filter-side" className="text-sm font-medium text-gray-700">
+          Side
+        </label>
         <select
           id="filter-side"
           name="side"

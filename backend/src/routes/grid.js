@@ -10,7 +10,9 @@ router.post('/grid', validate(schema.grid), async (req, res, next) => {
     const { cycleId, shift, labType, side } = req.body;
     const data = await gridService.buildGrid(cycleId, shift, labType, side);
     respond.ok(res, data, 'Grid fetched.');
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 router.get('/export', validate(schema.exportQuery, 'query'), async (req, res, next) => {
@@ -18,9 +20,14 @@ router.get('/export', validate(schema.exportQuery, 'query'), async (req, res, ne
     const { cycleId, shift, labType, side } = req.query;
     const csv = await gridService.exportGrid(cycleId, shift, labType, side);
     res.setHeader('Content-Type', 'text/csv');
-    res.setHeader('Content-Disposition', `attachment; filename="cycle-${cycleId}-${shift}-${labType}-export.csv"`);
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="cycle-${cycleId}-${shift}-${labType}-export.csv"`,
+    );
     res.send(csv);
-  } catch (err) { next(err); }
+  } catch (err) {
+    next(err);
+  }
 });
 
 module.exports = router;

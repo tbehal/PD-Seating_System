@@ -9,7 +9,7 @@ function formatShortDate(dateStr) {
 
 // Format week header label with optional date range
 function weekLabel(week, weekDates) {
-  const wd = weekDates?.find(w => w.week === week);
+  const wd = weekDates?.find((w) => w.week === week);
   if (wd?.startDate && wd?.endDate) {
     const start = formatShortDate(wd.startDate);
     const end = formatShortDate(wd.endDate);
@@ -54,7 +54,7 @@ export default function AvailabilityGrid({
 
   const handleWeekHeaderClick = (week) => {
     if (locked) return;
-    const wd = data.weekDates?.find(w => w.week === week);
+    const wd = data.weekDates?.find((w) => w.week === week);
     setEditingWeek(week);
     setEditStartDate(wd?.startDate ? wd.startDate.split('T')[0] : '');
     setEditEndDate(wd?.endDate ? wd.endDate.split('T')[0] : '');
@@ -131,7 +131,7 @@ export default function AvailabilityGrid({
     const payload = {
       stationId: selectedCells[0].stationId,
       shift: data.shift,
-      weeks: selectedCells.map(cell => cell.week),
+      weeks: selectedCells.map((cell) => cell.week),
     };
     if (selectionMode === 'book') {
       onBookCell(payload);
@@ -142,15 +142,19 @@ export default function AvailabilityGrid({
   };
 
   const isCellSelected = (stationId, week) => {
-    return selectedCells.some(cell => cell.stationId === stationId && cell.week === week);
+    return selectedCells.some((cell) => cell.stationId === stationId && cell.week === week);
   };
 
   // Filter grid based on search query
   const filteredGrid = searchQuery.trim()
-    ? data.grid.filter(row =>
-        row.availability.some(status =>
-          typeof status === 'string' && status !== '\u2713' && status !== '\u2717' && status.toLowerCase().includes(searchQuery.toLowerCase())
-        )
+    ? data.grid.filter((row) =>
+        row.availability.some(
+          (status) =>
+            typeof status === 'string' &&
+            status !== '\u2713' &&
+            status !== '\u2717' &&
+            status.toLowerCase().includes(searchQuery.toLowerCase()),
+        ),
       )
     : data.grid;
 
@@ -158,7 +162,11 @@ export default function AvailabilityGrid({
   let lastLabName = null;
 
   return (
-    <div className="bg-white rounded-xl shadow-md border border-gray-200" onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp}>
+    <div
+      className="bg-white rounded-xl shadow-md border border-gray-200"
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseUp}
+    >
       <div className="p-4 border-b border-gray-200 space-y-3">
         <div className="flex justify-between items-center">
           <h2 className="text-xl font-semibold text-slate-800">
@@ -202,13 +210,16 @@ export default function AvailabilityGrid({
         {selectedCells.length > 0 && !locked && (
           <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded-md flex items-center justify-between gap-2">
             <div className="text-sm text-yellow-900">
-              {selectionMode === 'book' ? 'Selected available weeks' : 'Selected booked weeks'}: {selectedCells.length}
+              {selectionMode === 'book' ? 'Selected available weeks' : 'Selected booked weeks'}:{' '}
+              {selectedCells.length}
             </div>
             <div className="flex gap-2">
               <button
                 onClick={confirmSelection}
                 className={`px-3 py-1 rounded-md text-white text-sm font-medium ${
-                  selectionMode === 'book' ? 'bg-brand-500 hover:bg-brand-600' : 'bg-red-600 hover:bg-red-700'
+                  selectionMode === 'book'
+                    ? 'bg-brand-500 hover:bg-brand-600'
+                    : 'bg-red-600 hover:bg-red-700'
                 }`}
               >
                 {selectionMode === 'book' ? 'Book Selected' : 'Clear Selected'}
@@ -231,10 +242,18 @@ export default function AvailabilityGrid({
       </div>
 
       <div className="overflow-x-auto p-2">
-        <table className="min-w-full border-collapse text-center" style={{ tableLayout: 'fixed', userSelect: 'none' }}>
+        <table
+          className="min-w-full border-collapse text-center"
+          style={{ tableLayout: 'fixed', userSelect: 'none' }}
+        >
           <thead>
             <tr>
-              <th className="p-2 text-left text-sm font-semibold text-gray-600" style={{ width: '160px' }}>Station</th>
+              <th
+                className="p-2 text-left text-sm font-semibold text-gray-600"
+                style={{ width: '160px' }}
+              >
+                Station
+              </th>
               {data.weeks.map((w) => {
                 const { label, dateRange } = weekLabel(w, data.weekDates);
                 return (
@@ -255,8 +274,15 @@ export default function AvailabilityGrid({
                         className="absolute z-50 top-full left-1/2 -translate-x-1/2 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg p-3 w-56"
                         onClick={(e) => e.stopPropagation()}
                       >
-                        <div className="text-left text-xs font-semibold text-gray-700 mb-2">Week {w} Dates</div>
-                        <label htmlFor={`week-${w}-start`} className="block text-left text-xs text-gray-500 mb-1">Start Date</label>
+                        <div className="text-left text-xs font-semibold text-gray-700 mb-2">
+                          Week {w} Dates
+                        </div>
+                        <label
+                          htmlFor={`week-${w}-start`}
+                          className="block text-left text-xs text-gray-500 mb-1"
+                        >
+                          Start Date
+                        </label>
                         <input
                           id={`week-${w}-start`}
                           type="date"
@@ -264,7 +290,12 @@ export default function AvailabilityGrid({
                           onChange={(e) => setEditStartDate(e.target.value)}
                           className="w-full px-2 py-1 border border-gray-300 rounded text-sm mb-2 focus:outline-none focus:ring-1 focus:ring-brand-500"
                         />
-                        <label htmlFor={`week-${w}-end`} className="block text-left text-xs text-gray-500 mb-1">End Date</label>
+                        <label
+                          htmlFor={`week-${w}-end`}
+                          className="block text-left text-xs text-gray-500 mb-1"
+                        >
+                          End Date
+                        </label>
                         <input
                           id={`week-${w}-end`}
                           type="date"
@@ -299,29 +330,41 @@ export default function AvailabilityGrid({
               const showLabHeader = row.labName !== lastLabName;
               lastLabName = row.labName;
 
-              const isStationMatch = selectedCombination && selectedCombination.stationId === row.stationId;
+              const isStationMatch =
+                selectedCombination && selectedCombination.stationId === row.stationId;
 
               return (
                 <React.Fragment key={row.stationId}>
                   {showLabHeader && (
                     <tr>
-                      <td colSpan={data.weeks.length + 1} className="p-2 bg-gray-100 text-left text-sm font-bold text-gray-700 border-t-2 border-gray-300">
+                      <td
+                        colSpan={data.weeks.length + 1}
+                        className="p-2 bg-gray-100 text-left text-sm font-bold text-gray-700 border-t-2 border-gray-300"
+                      >
                         {row.labName}
                       </td>
                     </tr>
                   )}
                   <tr className="odd:bg-white even:bg-gray-50">
-                    <td className={`p-2 border border-gray-200 font-bold text-left ${isStationMatch ? 'text-brand-600' : 'text-slate-700'}`}>
+                    <td
+                      className={`p-2 border border-gray-200 font-bold text-left ${isStationMatch ? 'text-brand-600' : 'text-slate-700'}`}
+                    >
                       {row.station}
                     </td>
                     {row.availability.map((status, index) => {
                       const week = data.weeks[index];
-                      const isSelected = isStationMatch && selectedCombination?.weeks.includes(week);
-                      const isBookedName = status !== '\u2713' && status !== '\u2717' && typeof status === 'string' && status.trim() !== '';
+                      const isSelected =
+                        isStationMatch && selectedCombination?.weeks.includes(week);
+                      const isBookedName =
+                        status !== '\u2713' &&
+                        status !== '\u2717' &&
+                        typeof status === 'string' &&
+                        status.trim() !== '';
                       const isAvailable = status === '\u2713';
                       const isTempSelected = isCellSelected(row.stationId, week);
 
-                      const baseClasses = 'p-2 border border-gray-200 font-mono text-sm transition-colors duration-200';
+                      const baseClasses =
+                        'p-2 border border-gray-200 font-mono text-sm transition-colors duration-200';
                       let colorClasses = '';
 
                       if (isTempSelected) {
@@ -336,16 +379,27 @@ export default function AvailabilityGrid({
                         colorClasses = 'bg-gray-100 text-gray-500';
                       }
 
-                      const clickable = (isBookedName || (isAvailable && !locked)) ? ' cursor-pointer' : '';
+                      const clickable =
+                        isBookedName || (isAvailable && !locked) ? ' cursor-pointer' : '';
                       const decoration = isBookedName ? ' underline decoration-dotted' : '';
 
                       return (
                         <td
                           key={index}
                           className={`${baseClasses} ${colorClasses}${clickable}${decoration}`}
-                          onMouseDown={() => handleMouseDown(row.stationId, week, isAvailable, isBookedName)}
-                          onMouseEnter={() => handleMouseEnter(row.stationId, week, isAvailable, isBookedName)}
-                          title={isBookedName ? `${status} (Click to view details)` : isAvailable ? 'Available' : status}
+                          onMouseDown={() =>
+                            handleMouseDown(row.stationId, week, isAvailable, isBookedName)
+                          }
+                          onMouseEnter={() =>
+                            handleMouseEnter(row.stationId, week, isAvailable, isBookedName)
+                          }
+                          title={
+                            isBookedName
+                              ? `${status} (Click to view details)`
+                              : isAvailable
+                                ? 'Available'
+                                : status
+                          }
                           style={{
                             maxWidth: '100px',
                             overflow: 'hidden',

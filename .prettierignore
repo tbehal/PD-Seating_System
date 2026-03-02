@@ -1,0 +1,8 @@
+node_modules
+dist
+build
+coverage
+*.db
+prisma/migrations
+backend/node_modules
+frontend/node_modules

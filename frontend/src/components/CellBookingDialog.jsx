@@ -43,12 +43,17 @@ export default function CellBookingDialog({
               <p className="text-slate-600 ml-4">{dialog.shift}</p>
             </div>
             <div>
-              <span className="font-semibold text-gray-700">Week{dialog.weeks.length > 1 ? 's' : ''}:</span>
+              <span className="font-semibold text-gray-700">
+                Week{dialog.weeks.length > 1 ? 's' : ''}:
+              </span>
               <p className="text-slate-600 ml-4">{dialog.weeks.join(', ')}</p>
             </div>
           </div>
           <div>
-            <label htmlFor="cellBookingName" className="block text-sm font-medium text-gray-700 mb-2">
+            <label
+              htmlFor="cellBookingName"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
               Trainee Name
             </label>
             <input

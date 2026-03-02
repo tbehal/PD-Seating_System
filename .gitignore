@@ -74,3 +74,7 @@ jspm_packages/
 *.db
 *.db-shm
 *.db-wal
+
+# Source maps
+*.js.map
+*.css.map

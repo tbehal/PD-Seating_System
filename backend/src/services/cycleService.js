@@ -6,7 +6,7 @@ async function listCycles() {
     orderBy: [{ year: 'desc' }, { number: 'desc' }],
     include: { cycleWeeks: { orderBy: { week: 'asc' } } },
   });
-  return cycles.map(c => ({
+  return cycles.map((c) => ({
     ...c,
     courseCodes: c.courseCodes ? JSON.parse(c.courseCodes) : [],
   }));
@@ -27,9 +27,8 @@ async function createCycle(year, courseCodes) {
       year,
       number: nextNumber,
       locked: false,
-      courseCodes: Array.isArray(courseCodes) && courseCodes.length > 0
-        ? JSON.stringify(courseCodes)
-        : null,
+      courseCodes:
+        Array.isArray(courseCodes) && courseCodes.length > 0 ? JSON.stringify(courseCodes) : null,
       cycleWeeks: {
         create: Array.from({ length: 12 }, (_, i) => ({ week: i + 1 })),
       },
@@ -55,7 +54,7 @@ async function updateWeeks(cycleId, weeks) {
   }
 
   await prisma.$transaction(
-    weeks.map(w =>
+    weeks.map((w) =>
       prisma.cycleWeek.upsert({
         where: { cycleId_week: { cycleId, week: w.week } },
         update: {
@@ -68,8 +67,8 @@ async function updateWeeks(cycleId, weeks) {
           startDate: w.startDate ? new Date(w.startDate) : null,
           endDate: w.endDate ? new Date(w.endDate) : null,
         },
-      })
-    )
+      }),
+    ),
   );
 
   return prisma.cycle.findUnique({
@@ -118,4 +117,11 @@ async function deleteCycle(cycleId) {
   return cycle;
 }
 
-module.exports = { listCycles, createCycle, updateWeeks, updateCourseCodes, setLocked, deleteCycle };
+module.exports = {
+  listCycles,
+  createCycle,
+  updateWeeks,
+  updateCourseCodes,
+  setLocked,
+  deleteCycle,
+};

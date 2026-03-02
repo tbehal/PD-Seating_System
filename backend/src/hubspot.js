@@ -17,7 +17,7 @@ class HubSpotService {
 
     if (!this.apiKey) {
       console.warn(
-        '  HUBSPOT_API_KEY not found. HubSpot integration will be disabled until a valid token is provided.'
+        '  HUBSPOT_API_KEY not found. HubSpot integration will be disabled until a valid token is provided.',
       );
     }
   }
@@ -25,7 +25,7 @@ class HubSpotService {
   async getAccessToken() {
     if (!this.apiKey) {
       throw new Error(
-        'Missing HUBSPOT_API_KEY. Please set it in your .env or deployment environment (Private App access token).'
+        'Missing HUBSPOT_API_KEY. Please set it in your .env or deployment environment (Private App access token).',
       );
     }
     return this.apiKey;
@@ -40,11 +40,19 @@ class HubSpotService {
 
       const filterGroups = [];
 
-      filterGroups.push({ filters: [{ propertyName: 'firstname', operator: 'CONTAINS_TOKEN', value: trimmed }] });
-      filterGroups.push({ filters: [{ propertyName: 'lastname', operator: 'CONTAINS_TOKEN', value: trimmed }] });
-      filterGroups.push({ filters: [{ propertyName: 'email', operator: 'CONTAINS_TOKEN', value: trimmed }] });
+      filterGroups.push({
+        filters: [{ propertyName: 'firstname', operator: 'CONTAINS_TOKEN', value: trimmed }],
+      });
+      filterGroups.push({
+        filters: [{ propertyName: 'lastname', operator: 'CONTAINS_TOKEN', value: trimmed }],
+      });
+      filterGroups.push({
+        filters: [{ propertyName: 'email', operator: 'CONTAINS_TOKEN', value: trimmed }],
+      });
       if (/^\d+$/.test(trimmed)) {
-        filterGroups.push({ filters: [{ propertyName: 'student_id', operator: 'EQ', value: trimmed }] });
+        filterGroups.push({
+          filters: [{ propertyName: 'student_id', operator: 'EQ', value: trimmed }],
+        });
       }
 
       if (tokens.length >= 2) {
@@ -67,7 +75,15 @@ class HubSpotService {
       const response = await axios.post(
         `${this.baseUrl}/crm/v3/objects/contacts/search`,
         {
-          properties: ['firstname', 'lastname', 'email', 'qr_code_id', 'student_id', 'phone', 'lifecyclestage'],
+          properties: [
+            'firstname',
+            'lastname',
+            'email',
+            'qr_code_id',
+            'student_id',
+            'phone',
+            'lifecyclestage',
+          ],
           filterGroups,
           limit,
         },
@@ -76,7 +92,7 @@ class HubSpotService {
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
-        }
+        },
       );
 
       const contacts = response.data.results || [];
@@ -95,7 +111,8 @@ class HubSpotService {
               phone: contact.properties.phone || '',
               studentId: contact.properties.student_id || '',
               qrCodeId: contact.properties.qr_code_id || '',
-              fullName: `${contact.properties.firstname || ''} ${contact.properties.lastname || ''}`.trim(),
+              fullName:
+                `${contact.properties.firstname || ''} ${contact.properties.lastname || ''}`.trim(),
               lifeCycleStage: contact.properties.lifecyclestage || 'Unknown',
               paymentStatus: paymentStatus,
               deals: deals,
@@ -110,13 +127,14 @@ class HubSpotService {
               phone: contact.properties.phone || '',
               studentId: contact.properties.student_id || '',
               qrCodeId: contact.properties.qr_code_id || '',
-              fullName: `${contact.properties.firstname || ''} ${contact.properties.lastname || ''}`.trim(),
+              fullName:
+                `${contact.properties.firstname || ''} ${contact.properties.lastname || ''}`.trim(),
               lifeCycleStage: contact.properties.lifecyclestage || 'Unknown',
               paymentStatus: 'Unknown',
               deals: [],
             };
           }
-        })
+        }),
       );
 
       return contactsWithDeals;
@@ -154,9 +172,9 @@ class HubSpotService {
             },
             params: {
               limit: 100,
-              ...(after && { after })
-            }
-          }
+              ...(after && { after }),
+            },
+          },
         );
 
         const results = response.data.results || [];
@@ -176,7 +194,7 @@ class HubSpotService {
                   Authorization: `Bearer ${token}`,
                   'Content-Type': 'application/json',
                 },
-              }
+              },
             );
 
             const deal = dealResponse.data;
@@ -198,10 +216,10 @@ class HubSpotService {
             console.warn(`Failed to fetch deal ${dealAssoc.id}:`, error.message);
             return null;
           }
-        })
+        }),
       );
 
-      return deals.filter(deal => deal !== null);
+      return deals.filter((deal) => deal !== null);
     } catch (error) {
       console.warn(`Failed to fetch deals for contact ${contactId}:`, error.message);
       return [];
@@ -225,14 +243,14 @@ class HubSpotService {
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
-        }
+        },
       );
 
       const stageName = response.data.label || stageId;
 
       this.cache.set(cacheKey, {
         data: stageName,
-        timestamp: Date.now()
+        timestamp: Date.now(),
       });
 
       return stageName;
@@ -247,7 +265,7 @@ class HubSpotService {
       return 'No Deals';
     }
 
-    const dealWithStage = deals.find(deal => deal.stageName) || deals[0];
+    const dealWithStage = deals.find((deal) => deal.stageName) || deals[0];
 
     if (!dealWithStage) {
       return 'Unknown';
@@ -267,7 +285,7 @@ class HubSpotService {
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
-        }
+        },
       );
 
       const contact = response.data;
@@ -282,7 +300,8 @@ class HubSpotService {
         phone: contact.properties.phone || '',
         studentId: contact.properties.student_id || '',
         qrCodeId: contact.properties.qr_code_id || '',
-        fullName: `${contact.properties.firstname || ''} ${contact.properties.lastname || ''}`.trim(),
+        fullName:
+          `${contact.properties.firstname || ''} ${contact.properties.lastname || ''}`.trim(),
         lifeCycleStage: contact.properties.lifecyclestage || 'Unknown',
         paymentStatus: paymentStatus,
         deals: deals,
@@ -294,6 +313,7 @@ class HubSpotService {
   }
 
   async updateContactPaymentStatus(contactId, paymentStatus) {
+    // eslint-disable-next-line no-console
     console.log(`Payment status update for contact ${contactId}: ${paymentStatus}`);
     return { success: true, message: 'Payment status tracked via deals' };
   }
@@ -302,11 +322,11 @@ class HubSpotService {
 
   async throttledRequest(fn) {
     const now = Date.now();
-    this._requestTimestamps = this._requestTimestamps.filter(t => now - t < this._rateWindow);
+    this._requestTimestamps = this._requestTimestamps.filter((t) => now - t < this._rateWindow);
     if (this._requestTimestamps.length >= this._rateLimit) {
       const oldest = this._requestTimestamps[0];
       const waitMs = this._rateWindow - (now - oldest) + 50;
-      await new Promise(resolve => setTimeout(resolve, waitMs));
+      await new Promise((resolve) => setTimeout(resolve, waitMs));
     }
     this._requestTimestamps.push(Date.now());
     return fn();
@@ -316,7 +336,7 @@ class HubSpotService {
     const results = [];
     for (let i = 0; i < items.length; i += concurrency) {
       const batch = items.slice(i, i + concurrency);
-      const batchResults = await Promise.all(batch.map(item => fn(item)));
+      const batchResults = await Promise.all(batch.map((item) => fn(item)));
       results.push(...batchResults);
     }
     return results;
@@ -334,13 +354,13 @@ class HubSpotService {
         const response = await this.throttledRequest(() =>
           axios.post(
             `${this.baseUrl}/crm/v4/associations/${fromType}/${toType}/batch/read`,
-            { inputs: batch.map(id => ({ id })) },
-            { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } }
-          )
+            { inputs: batch.map((id) => ({ id })) },
+            { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } },
+          ),
         );
-        for (const result of (response.data.results || [])) {
+        for (const result of response.data.results || []) {
           const fromId = String(result.from?.id);
-          const toIds = (result.to || []).map(t => String(t.toObjectId));
+          const toIds = (result.to || []).map((t) => String(t.toObjectId));
           if (fromId && toIds.length > 0) {
             resultMap.set(fromId, toIds);
           }
@@ -361,11 +381,11 @@ class HubSpotService {
         const response = await this.throttledRequest(() =>
           axios.post(
             `${this.baseUrl}/crm/v3/objects/${objectType}/batch/read`,
-            { inputs: batch.map(id => ({ id })), properties },
-            { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } }
-          )
+            { inputs: batch.map((id) => ({ id })), properties },
+            { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } },
+          ),
         );
-        for (const obj of (response.data.results || [])) {
+        for (const obj of response.data.results || []) {
           resultMap.set(obj.id, obj);
         }
       } catch (error) {
@@ -387,14 +407,25 @@ class HubSpotService {
         axios.post(
           `${this.baseUrl}/crm/v3/objects/line_items/search`,
           {
-            filterGroups: [{
-              filters: [{
-                propertyName: 'name',
-                operator: 'CONTAINS_TOKEN',
-                value: courseCode,
-              }],
-            }],
-            properties: ['name', 'quantity', 'price', 'hs_product_id', 'course_start_date', 'course_end_date'],
+            filterGroups: [
+              {
+                filters: [
+                  {
+                    propertyName: 'name',
+                    operator: 'CONTAINS_TOKEN',
+                    value: courseCode,
+                  },
+                ],
+              },
+            ],
+            properties: [
+              'name',
+              'quantity',
+              'price',
+              'hs_product_id',
+              'course_start_date',
+              'course_end_date',
+            ],
             limit: 100,
             ...(after && { after }),
           },
@@ -403,8 +434,8 @@ class HubSpotService {
               Authorization: `Bearer ${token}`,
               'Content-Type': 'application/json',
             },
-          }
-        )
+          },
+        ),
       );
 
       const results = response.data.results || [];
@@ -419,26 +450,23 @@ class HubSpotService {
     const token = await this.getAccessToken();
     try {
       const assocResponse = await this.throttledRequest(() =>
-        axios.get(
-          `${this.baseUrl}/crm/v3/objects/deals/${dealId}/associations/line_items`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-              'Content-Type': 'application/json',
-            },
-          }
-        )
+        axios.get(`${this.baseUrl}/crm/v3/objects/deals/${dealId}/associations/line_items`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        }),
       );
 
       const assocResults = assocResponse.data.results || [];
       if (assocResults.length === 0) return [];
 
-      const lineItemIds = assocResults.map(a => a.id);
+      const lineItemIds = assocResults.map((a) => a.id);
       const response = await this.throttledRequest(() =>
         axios.post(
           `${this.baseUrl}/crm/v3/objects/line_items/batch/read`,
           {
-            inputs: lineItemIds.map(id => ({ id })),
+            inputs: lineItemIds.map((id) => ({ id })),
             properties: ['name', 'quantity', 'price', 'course_start_date', 'course_end_date'],
           },
           {
@@ -446,8 +474,8 @@ class HubSpotService {
               Authorization: `Bearer ${token}`,
               'Content-Type': 'application/json',
             },
-          }
-        )
+          },
+        ),
       );
 
       return response.data.results || [];
@@ -466,25 +494,31 @@ class HubSpotService {
       }
     }
 
+    // eslint-disable-next-line no-console
     console.log(`[Registration] Building list for ${shift}, codes:`, shiftCodes);
 
     // STEP 1: Search line items for each course code
-    let allLineItems = [];
+    const allLineItems = [];
     for (const courseCode of shiftCodes) {
       const items = await this.searchLineItemsByName(courseCode);
       allLineItems.push(...items);
+      // eslint-disable-next-line no-console
       console.log(`[Registration] Found ${items.length} line items for "${courseCode}"`);
     }
 
     if (allLineItems.length === 0) {
-      const result = { rows: [], meta: { totalStudents: 0, shift, fetchedAt: new Date().toISOString() } };
+      const result = {
+        rows: [],
+        meta: { totalStudents: 0, shift, fetchedAt: new Date().toISOString() },
+      };
       if (cacheKey) this.registrationCache.set(cacheKey, { data: result, timestamp: Date.now() });
       return result;
     }
 
     // STEP 2: Batch get deal associations for ALL line items (1 call per 100 items)
-    const lineItemIds = allLineItems.map(li => li.id);
+    const lineItemIds = allLineItems.map((li) => li.id);
     const liToDealMap = await this.batchGetAssociations('line_items', 'deals', lineItemIds);
+    // eslint-disable-next-line no-console
     console.log(`[Registration] Got deal associations for ${liToDealMap.size} line items`);
 
     // Build dealId → lineItems mapping
@@ -501,15 +535,27 @@ class HubSpotService {
 
     const dealIds = Array.from(dealIdSet);
     if (dealIds.length === 0) {
-      const result = { rows: [], meta: { totalStudents: 0, shift, fetchedAt: new Date().toISOString() } };
+      const result = {
+        rows: [],
+        meta: { totalStudents: 0, shift, fetchedAt: new Date().toISOString() },
+      };
       if (cacheKey) this.registrationCache.set(cacheKey, { data: result, timestamp: Date.now() });
       return result;
     }
+    // eslint-disable-next-line no-console
     console.log(`[Registration] Found ${dealIds.length} unique deals`);
 
     // STEP 3: Batch read ALL deal details (1 call per 100 deals)
-    const dealMap = await this.batchReadObjects('deals', dealIds,
-      ['dealname', 'amount', 'dealstage', 'pipeline', 'createdate', 'closedate', 'remaining_amount']);
+    const dealMap = await this.batchReadObjects('deals', dealIds, [
+      'dealname',
+      'amount',
+      'dealstage',
+      'pipeline',
+      'createdate',
+      'closedate',
+      'remaining_amount',
+    ]);
+    // eslint-disable-next-line no-console
     console.log(`[Registration] Loaded ${dealMap.size} deal details`);
 
     // STEP 4: Batch get contact associations for ALL deals (1 call per 100 deals)
@@ -525,11 +571,18 @@ class HubSpotService {
     }
 
     const contactIds = Array.from(contactDealMap.keys());
+    // eslint-disable-next-line no-console
     console.log(`[Registration] Found ${contactIds.length} unique contacts`);
 
     // STEP 5: Batch read ALL contact details (1 call per 100 contacts)
-    const contactMap = await this.batchReadObjects('contacts', contactIds,
-      ['firstname', 'lastname', 'email', 'student_id', 'phone', 'ndecc_exam_date']);
+    const contactMap = await this.batchReadObjects('contacts', contactIds, [
+      'firstname',
+      'lastname',
+      'email',
+      'student_id',
+      'phone',
+      'ndecc_exam_date',
+    ]);
 
     // STEP 6: Get contact history for cycle count & program flags
     // Use batch: contact → deals associations, then deal → line_items
@@ -542,11 +595,16 @@ class HubSpotService {
     }
 
     // Batch read all historical deals (for dealname)
-    const histDealMap = await this.batchReadObjects('deals', Array.from(allHistDealIds),
-      ['dealname']);
+    const histDealMap = await this.batchReadObjects('deals', Array.from(allHistDealIds), [
+      'dealname',
+    ]);
 
     // Batch get line item associations for all historical deals
-    const histDealToLIMap = await this.batchGetAssociations('deals', 'line_items', Array.from(allHistDealIds));
+    const histDealToLIMap = await this.batchGetAssociations(
+      'deals',
+      'line_items',
+      Array.from(allHistDealIds),
+    );
 
     // Collect ALL historical line item IDs
     const allHistLIIds = new Set();
@@ -557,13 +615,18 @@ class HubSpotService {
     // Batch read all historical line items (for name)
     const histLIMap = await this.batchReadObjects('line_items', Array.from(allHistLIIds), ['name']);
 
-    console.log(`[Registration] Loaded history: ${allHistDealIds.size} deals, ${allHistLIIds.size} line items`);
+    // eslint-disable-next-line no-console
+    console.log(
+      `[Registration] Loaded history: ${allHistDealIds.size} deals, ${allHistLIIds.size} line items`,
+    );
 
     // Now compute flags per contact from the pre-fetched data
     const contactHistories = new Map();
+    const NDC_CLINICAL_RE = /NDC-[^-]+-Mis(\d+)-Clinical/i;
+
     for (const contactId of contactIds) {
       const histDealIds = contactToAllDealsMap.get(contactId) || [];
-      let cycleCount = 0;
+      const uniqueMisCycles = new Set();
       let hasRoadmap = false;
       let hasAFK = false;
       let hasACJ = false;
@@ -571,26 +634,31 @@ class HubSpotService {
       for (const dId of histDealIds) {
         const deal = histDealMap.get(dId);
         const dealName = (deal?.properties?.dealname || '').toUpperCase();
-        let dealHasNDC = dealName.includes('NDC');
         if (dealName.includes('ROADMAP')) hasRoadmap = true;
         if (dealName.includes('AFK')) hasAFK = true;
         if (dealName.includes('ACJ')) hasACJ = true;
 
-        // Check line items of this deal
+        // Count unique NDC clinical line items per deal (AM/PM deduped by Mis number)
         const liIds = histDealToLIMap.get(dId) || [];
+        const dealMisNumbers = new Set();
         for (const liId of liIds) {
           const li = histLIMap.get(liId);
-          const liName = (li?.properties?.name || '').toUpperCase();
-          if (liName.includes('NDC')) dealHasNDC = true;
-          if (liName.includes('ROADMAP')) hasRoadmap = true;
-          if (liName.includes('AFK')) hasAFK = true;
-          if (liName.includes('ACJ')) hasACJ = true;
+          const liName = li?.properties?.name || '';
+          const match = liName.match(NDC_CLINICAL_RE);
+          if (match) dealMisNumbers.add(`${dId}-Mis${match[1]}`);
+          if (liName.toUpperCase().includes('ROADMAP')) hasRoadmap = true;
+          if (liName.toUpperCase().includes('AFK')) hasAFK = true;
+          if (liName.toUpperCase().includes('ACJ')) hasACJ = true;
         }
-
-        if (dealHasNDC) cycleCount++;
+        for (const key of dealMisNumbers) uniqueMisCycles.add(key);
       }
 
-      contactHistories.set(contactId, { cycleCount, hasRoadmap, hasAFK, hasACJ });
+      contactHistories.set(contactId, {
+        cycleCount: uniqueMisCycles.size,
+        hasRoadmap,
+        hasAFK,
+        hasACJ,
+      });
     }
 
     // STEP 7: Assemble rows
@@ -619,9 +687,18 @@ class HubSpotService {
 
       // Skip excluded deal stages
       const statusLower = paymentStatus.toLowerCase();
-      if (statusLower.includes('enrol') && (statusLower.includes('lost') || statusLower.includes('withdrawn'))) continue;
+      if (
+        statusLower.includes('enrol') &&
+        (statusLower.includes('lost') || statusLower.includes('withdrawn'))
+      )
+        continue;
 
-      const history = contactHistories.get(contactId) || { cycleCount: 0, hasRoadmap: false, hasAFK: false, hasACJ: false };
+      const history = contactHistories.get(contactId) || {
+        cycleCount: 0,
+        hasRoadmap: false,
+        hasAFK: false,
+        hasACJ: false,
+      };
 
       rows.push({
         seatNumber: 0,
@@ -634,7 +711,9 @@ class HubSpotService {
         courseEndDate: lineItem?.properties?.course_end_date || null,
         registrationDate: deal.properties.createdate || null,
         paymentStatus,
-        outstanding: deal.properties.remaining_amount ? parseFloat(deal.properties.remaining_amount) : 0,
+        outstanding: deal.properties.remaining_amount
+          ? parseFloat(deal.properties.remaining_amount)
+          : 0,
         cycleCount: history.cycleCount,
         hasRoadmap: history.hasRoadmap,
         hasAFK: history.hasAFK,
@@ -651,8 +730,11 @@ class HubSpotService {
       const dateB = b.registrationDate ? new Date(b.registrationDate).getTime() : Infinity;
       return dateA - dateB;
     });
-    rows.forEach((row, i) => { row.seatNumber = i + 1; });
+    rows.forEach((row, i) => {
+      row.seatNumber = i + 1;
+    });
 
+    // eslint-disable-next-line no-console
     console.log(`[Registration] Done! ${rows.length} students`);
 
     const result = {

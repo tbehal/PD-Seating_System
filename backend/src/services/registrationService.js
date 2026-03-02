@@ -9,9 +9,10 @@ function ensureHubSpot() {
 }
 
 function filterShiftCodes(courseCodes, shift) {
-  const shiftCodes = courseCodes.filter(code => {
+  const shiftCodes = courseCodes.filter((code) => {
     const upper = code.toUpperCase();
-    if (shift === 'AM') return upper.includes('-AM') || upper.includes('_AM') || upper.endsWith('AM');
+    if (shift === 'AM')
+      return upper.includes('-AM') || upper.includes('_AM') || upper.endsWith('AM');
     return upper.includes('-PM') || upper.includes('_PM') || upper.endsWith('PM');
   });
   return shiftCodes.length > 0 ? shiftCodes : courseCodes;
@@ -57,32 +58,46 @@ async function exportRegistrationCsv(cycleId, shift) {
   const result = await hubspot.buildRegistrationList(codesToUse, shift, cacheKey);
 
   const headers = [
-    'Seat #', 'First Name', 'Last Name', 'Email', 'Phone', 'Student ID',
-    'Course Start Date', 'Course End Date', 'Registration Date',
-    'Payment Status', 'Outstanding', 'Cycle Count',
-    'Roadmap', 'AFK', 'ACJ', 'Exam Date',
+    'Seat #',
+    'First Name',
+    'Last Name',
+    'Email',
+    'Phone',
+    'Student ID',
+    'Course Start Date',
+    'Course End Date',
+    'Registration Date',
+    'Payment Status',
+    'Outstanding',
+    'Cycle Count',
+    'Roadmap',
+    'AFK',
+    'ACJ',
+    'Exam Date',
   ];
 
   const csvRows = [headers.join(',')];
   for (const row of result.rows) {
-    csvRows.push([
-      row.seatNumber,
-      `"${(row.firstName || '').replace(/"/g, '""')}"`,
-      `"${(row.lastName || '').replace(/"/g, '""')}"`,
-      `"${(row.email || '').replace(/"/g, '""')}"`,
-      `"${(row.phone || '').replace(/"/g, '""')}"`,
-      `"${(row.studentId || '').replace(/"/g, '""')}"`,
-      row.courseStartDate ? new Date(row.courseStartDate).toLocaleDateString('en-US') : '',
-      row.courseEndDate ? new Date(row.courseEndDate).toLocaleDateString('en-US') : '',
-      row.registrationDate ? new Date(row.registrationDate).toLocaleDateString('en-US') : '',
-      `"${(row.paymentStatus || '').replace(/"/g, '""')}"`,
-      row.outstanding || 0,
-      row.cycleCount || 0,
-      row.hasRoadmap ? 'Yes' : 'No',
-      row.hasAFK ? 'Yes' : 'No',
-      row.hasACJ ? 'Yes' : 'No',
-      row.examDate ? new Date(row.examDate).toLocaleDateString('en-US') : '',
-    ].join(','));
+    csvRows.push(
+      [
+        row.seatNumber,
+        `"${(row.firstName || '').replace(/"/g, '""')}"`,
+        `"${(row.lastName || '').replace(/"/g, '""')}"`,
+        `"${(row.email || '').replace(/"/g, '""')}"`,
+        `"${(row.phone || '').replace(/"/g, '""')}"`,
+        `"${(row.studentId || '').replace(/"/g, '""')}"`,
+        row.courseStartDate ? new Date(row.courseStartDate).toLocaleDateString('en-US') : '',
+        row.courseEndDate ? new Date(row.courseEndDate).toLocaleDateString('en-US') : '',
+        row.registrationDate ? new Date(row.registrationDate).toLocaleDateString('en-US') : '',
+        `"${(row.paymentStatus || '').replace(/"/g, '""')}"`,
+        row.outstanding || 0,
+        row.cycleCount || 0,
+        row.hasRoadmap ? 'Yes' : 'No',
+        row.hasAFK ? 'Yes' : 'No',
+        row.hasACJ ? 'Yes' : 'No',
+        row.examDate ? new Date(row.examDate).toLocaleDateString('en-US') : '',
+      ].join(','),
+    );
   }
 
   return {

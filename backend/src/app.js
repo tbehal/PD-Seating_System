@@ -21,20 +21,23 @@ const app = express();
 app.use(helmet());
 
 // CORS — restrict origins based on environment
-const allowedOrigins = config.nodeEnv === 'production'
-  ? [process.env.FRONTEND_URL].filter(Boolean)
-  : ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:3000'];
+const allowedOrigins =
+  config.nodeEnv === 'production'
+    ? [process.env.FRONTEND_URL].filter(Boolean)
+    : ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:3000'];
 
-app.use(cors({
-  origin(origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true,
-}));
+app.use(
+  cors({
+    origin(origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
+    credentials: true,
+  }),
+);
 
 // Body parsing + cookies
 app.use(express.json());
@@ -42,21 +45,27 @@ app.use(cookieParser());
 
 // Rate limiters (skip in test environment)
 if (config.nodeEnv !== 'test') {
-  app.use('/api/', rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 300,
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: { error: 'Too many requests. Please try again later.' },
-  }));
+  app.use(
+    '/api/',
+    rateLimit({
+      windowMs: 15 * 60 * 1000,
+      max: 300,
+      standardHeaders: true,
+      legacyHeaders: false,
+      message: { error: 'Too many requests. Please try again later.' },
+    }),
+  );
 
-  app.use('/api/v1/availability/contacts', rateLimit({
-    windowMs: 60 * 1000,
-    max: 30,
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: { error: 'HubSpot rate limit protection. Please wait a moment.' },
-  }));
+  app.use(
+    '/api/v1/availability/contacts',
+    rateLimit({
+      windowMs: 60 * 1000,
+      max: 30,
+      standardHeaders: true,
+      legacyHeaders: false,
+      message: { error: 'HubSpot rate limit protection. Please wait a moment.' },
+    }),
+  );
 }
 
 // Public routes (no auth required)

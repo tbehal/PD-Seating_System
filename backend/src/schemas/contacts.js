@@ -6,7 +6,9 @@ const searchQuery = Joi.object({
 });
 
 const idParam = Joi.object({
-  id: Joi.string().pattern(/^\d+$/).required()
+  id: Joi.string()
+    .pattern(/^\d+$/)
+    .required()
     .messages({ 'string.pattern.base': 'Invalid contact ID.' }),
 });
 

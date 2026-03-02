@@ -25,7 +25,9 @@ export default function BookingSection({
       <h2 className="text-xl font-semibold text-slate-800 mb-4">Book Lab Slot</h2>
       <div className="space-y-4">
         {error && <p className="text-sm text-red-600 bg-red-100 p-3 rounded-md">{error}</p>}
-        {successMessage && <p className="text-sm text-green-600 bg-green-100 p-3 rounded-md">{successMessage}</p>}
+        {successMessage && (
+          <p className="text-sm text-green-600 bg-green-100 p-3 rounded-md">{successMessage}</p>
+        )}
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Student Search</label>
@@ -37,7 +39,9 @@ export default function BookingSection({
         </div>
 
         <div>
-          <label htmlFor="traineeName" className="block text-sm font-medium text-gray-700">Trainee Name</label>
+          <label htmlFor="traineeName" className="block text-sm font-medium text-gray-700">
+            Trainee Name
+          </label>
           <input
             type="text"
             id="traineeName"
@@ -57,7 +61,10 @@ export default function BookingSection({
                   HubSpot Contact: {selectedContact.fullName}
                 </div>
                 <div className="text-sm text-blue-700">
-                  Payment Status: <span className="font-semibold">{selectedContact.paymentStatus || 'Unknown'}</span>
+                  Payment Status:{' '}
+                  <span className="font-semibold">
+                    {selectedContact.paymentStatus || 'Unknown'}
+                  </span>
                 </div>
                 <div className="text-sm text-blue-700">
                   Lifecycle Stage: {selectedContact.lifeCycleStage}

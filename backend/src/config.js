@@ -12,7 +12,7 @@ const config = {
 
 if (config.nodeEnv === 'production') {
   const required = ['DATABASE_URL', 'JWT_SECRET', 'ADMIN_PASSWORD_HASH'];
-  const missing = required.filter(key => !process.env[key]);
+  const missing = required.filter((key) => !process.env[key]);
   if (missing.length > 0) {
     console.error(`FATAL: Missing required environment variables: ${missing.join(', ')}`);
     process.exit(1);

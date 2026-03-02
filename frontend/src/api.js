@@ -11,7 +11,7 @@ axios.interceptors.response.use(
       window.dispatchEvent(new Event('auth:unauthorized'));
     }
     return Promise.reject(error);
-  }
+  },
 );
 
 // --- Auth endpoints ---
@@ -74,10 +74,21 @@ export async function updateCycleWeeks(cycleId, weeks) {
 
 // --- Availability endpoints (all require cycleId) ---
 
-export async function findCombinations({ cycleId, shift, labType, side, startWeek, endWeek, weeksNeeded }) {
+export async function findCombinations({
+  cycleId,
+  shift,
+  labType,
+  side,
+  startWeek,
+  endWeek,
+  weeksNeeded,
+}) {
   try {
     const res = await axios.post(`${API_BASE}/api/v1/availability/find`, {
-      cycleId, shift, labType, side,
+      cycleId,
+      shift,
+      labType,
+      side,
       startWeek: parseInt(startWeek, 10),
       endWeek: parseInt(endWeek, 10),
       weeksNeeded: parseInt(weeksNeeded, 10),
@@ -91,7 +102,12 @@ export async function findCombinations({ cycleId, shift, labType, side, startWee
 
 export async function fetchGrid(cycleId, shift, labType, side) {
   try {
-    const res = await axios.post(`${API_BASE}/api/v1/availability/grid`, { cycleId, shift, labType, side });
+    const res = await axios.post(`${API_BASE}/api/v1/availability/grid`, {
+      cycleId,
+      shift,
+      labType,
+      side,
+    });
     return res.data.data;
   } catch (error) {
     console.error('Error fetching grid:', error.response?.data?.error || error.message);
@@ -101,14 +117,22 @@ export async function fetchGrid(cycleId, shift, labType, side) {
 
 export async function bookSlot({ cycleId, stationId, shift, weeks, traineeName, contactId }) {
   const res = await axios.post(`${API_BASE}/api/v1/availability/book`, {
-    cycleId, stationId, shift, weeks, traineeName, contactId,
+    cycleId,
+    stationId,
+    shift,
+    weeks,
+    traineeName,
+    contactId,
   });
   return res.data;
 }
 
 export async function unbookSlot({ cycleId, stationId, shift, weeks }) {
   const res = await axios.post(`${API_BASE}/api/v1/availability/unbook`, {
-    cycleId, stationId, shift, weeks,
+    cycleId,
+    stationId,
+    shift,
+    weeks,
   });
   return res.data;
 }
@@ -153,7 +177,10 @@ export async function fetchRegistrationList(cycleId, shift, refresh = false) {
     });
     return res.data.data;
   } catch (error) {
-    console.error('Error fetching registration list:', error.response?.data?.error || error.message);
+    console.error(
+      'Error fetching registration list:',
+      error.response?.data?.error || error.message,
+    );
     throw error;
   }
 }
@@ -174,13 +201,18 @@ export async function exportRegistrationList(cycleId, shift) {
     link.remove();
     window.URL.revokeObjectURL(url);
   } catch (error) {
-    console.error('Error exporting registration list:', error.response?.data?.error || error.message);
+    console.error(
+      'Error exporting registration list:',
+      error.response?.data?.error || error.message,
+    );
     throw error;
   }
 }
 
 export async function updateCourseCodes(cycleId, courseCodes) {
-  const res = await axios.patch(`${API_BASE}/api/v1/cycles/${cycleId}/course-codes`, { courseCodes });
+  const res = await axios.patch(`${API_BASE}/api/v1/cycles/${cycleId}/course-codes`, {
+    courseCodes,
+  });
   return res.data.data;
 }
 
@@ -193,7 +225,10 @@ export async function fetchSeatingAnalytics(year, cycleId = null) {
     });
     return res.data.data;
   } catch (error) {
-    console.error('Error fetching seating analytics:', error.response?.data?.error || error.message);
+    console.error(
+      'Error fetching seating analytics:',
+      error.response?.data?.error || error.message,
+    );
     throw error;
   }
 }
@@ -205,7 +240,10 @@ export async function fetchRegistrationAnalytics(year, shift, cycleId = null) {
     });
     return res.data.data;
   } catch (error) {
-    console.error('Error fetching registration analytics:', error.response?.data?.error || error.message);
+    console.error(
+      'Error fetching registration analytics:',
+      error.response?.data?.error || error.message,
+    );
     throw error;
   }
 }
@@ -240,14 +278,15 @@ export async function searchContactByName(name, limit = 5) {
       params: { q: name, limit },
     });
     if (res.data.data && res.data.data.length > 0) {
-      const exactMatch = res.data.data.find(contact =>
-        contact.fullName.toLowerCase() === name.toLowerCase()
+      const exactMatch = res.data.data.find(
+        (contact) => contact.fullName.toLowerCase() === name.toLowerCase(),
       );
       if (exactMatch) return exactMatch;
 
-      const bestMatch = res.data.data.find(contact =>
-        contact.fullName.toLowerCase().includes(name.toLowerCase()) ||
-        name.toLowerCase().includes(contact.fullName.toLowerCase())
+      const bestMatch = res.data.data.find(
+        (contact) =>
+          contact.fullName.toLowerCase().includes(name.toLowerCase()) ||
+          name.toLowerCase().includes(contact.fullName.toLowerCase()),
       );
       if (bestMatch) return bestMatch;
 
@@ -262,9 +301,12 @@ export async function searchContactByName(name, limit = 5) {
 
 export async function updateContactPaymentStatus(contactId, paymentStatus) {
   try {
-    const res = await axios.patch(`${API_BASE}/api/v1/availability/contacts/${contactId}/payment-status`, {
-      paymentStatus,
-    });
+    const res = await axios.patch(
+      `${API_BASE}/api/v1/availability/contacts/${contactId}/payment-status`,
+      {
+        paymentStatus,
+      },
+    );
     return res.data.data;
   } catch (error) {
     console.error('Error updating payment status:', error.response?.data?.error || error.message);

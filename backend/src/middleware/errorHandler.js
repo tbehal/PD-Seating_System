@@ -11,7 +11,8 @@ function errorHandler(err, req, res, _next) {
   // Prisma errors
   if (err.code === 'P2025') return res.status(404).json({ error: 'Record not found.' });
   if (err.code === 'P2002') return res.status(409).json({ error: 'Duplicate record.' });
-  if (err.code === 'P2003') return res.status(400).json({ error: 'Referenced record does not exist.' });
+  if (err.code === 'P2003')
+    return res.status(400).json({ error: 'Referenced record does not exist.' });
 
   // Unexpected errors — log full stack trace
   console.error(`[${req.method} ${req.path}] Unexpected error:`, err);

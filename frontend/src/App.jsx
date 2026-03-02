@@ -1,10 +1,23 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Toaster } from 'sonner';
 import {
-  fetchCycles, createCycle, deleteCycle, lockCycle, unlockCycle, updateCycleWeeks,
-  fetchGrid, findCombinations, bookSlot, unbookSlot, resetAllBookings, exportCycle,
-  getContactById, searchContactByName, updateCourseCodes,
-  checkAuth, logout,
+  fetchCycles,
+  createCycle,
+  deleteCycle,
+  lockCycle,
+  unlockCycle,
+  updateCycleWeeks,
+  fetchGrid,
+  findCombinations,
+  bookSlot,
+  unbookSlot,
+  resetAllBookings,
+  exportCycle,
+  getContactById,
+  searchContactByName,
+  updateCourseCodes,
+  checkAuth,
+  logout,
 } from './api';
 import LoginPage from './components/LoginPage';
 import CycleTabs from './components/CycleTabs';
@@ -47,7 +60,11 @@ export default function App() {
 
   // Grid & search state
   const [gridData, setGridData] = useState(null);
-  const [searchCriteria, setSearchCriteria] = useState({ startWeek: 1, endWeek: 12, weeksNeeded: 2 });
+  const [searchCriteria, setSearchCriteria] = useState({
+    startWeek: 1,
+    endWeek: 12,
+    weeksNeeded: 2,
+  });
   const [results, setResults] = useState([]);
   const [selectedCombination, setSelectedCombination] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -67,20 +84,20 @@ export default function App() {
   const [studentInfoDialog, setStudentInfoDialog] = useState(null);
 
   // Derived: is the active cycle locked?
-  const activeCycle = cycles.find(c => c.id === activeCycleId);
+  const activeCycle = cycles.find((c) => c.id === activeCycleId);
   const isLocked = activeCycle?.locked ?? false;
 
-  // Load cycles on mount
+  // Load cycles when authenticated
   useEffect(() => {
+    if (!authenticated) return;
     (async () => {
       const data = await fetchCycles();
       setCycles(data);
       if (data.length > 0) {
-        // Select the first (most recent) cycle
         setActiveCycleId(data[0].id);
       }
     })();
-  }, []);
+  }, [authenticated]);
 
   // Reload grid when cycle or filters change
   useEffect(() => {
@@ -104,7 +121,9 @@ export default function App() {
 
   const handleUpdateCourseCodes = async (cycleId, courseCodes) => {
     const updated = await updateCourseCodes(cycleId, courseCodes);
-    setCycles(prev => prev.map(c => c.id === cycleId ? { ...c, courseCodes: updated.courseCodes } : c));
+    setCycles((prev) =>
+      prev.map((c) => (c.id === cycleId ? { ...c, courseCodes: updated.courseCodes } : c)),
+    );
   };
 
   const handleDeleteCycle = async (cycleId) => {
@@ -120,18 +139,18 @@ export default function App() {
 
   const handleLockCycle = async (cycleId) => {
     await lockCycle(cycleId);
-    setCycles(prev => prev.map(c => c.id === cycleId ? { ...c, locked: true } : c));
+    setCycles((prev) => prev.map((c) => (c.id === cycleId ? { ...c, locked: true } : c)));
   };
 
   const handleUnlockCycle = async (cycleId) => {
     await unlockCycle(cycleId);
-    setCycles(prev => prev.map(c => c.id === cycleId ? { ...c, locked: false } : c));
+    setCycles((prev) => prev.map((c) => (c.id === cycleId ? { ...c, locked: false } : c)));
   };
 
   const handleUpdateWeekDates = async (cycleId, weeks) => {
     try {
       const updatedCycle = await updateCycleWeeks(cycleId, weeks);
-      setCycles(prev => prev.map(c => c.id === cycleId ? updatedCycle : c));
+      setCycles((prev) => prev.map((c) => (c.id === cycleId ? updatedCycle : c)));
       await loadGrid();
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to update week dates.');
@@ -169,7 +188,7 @@ export default function App() {
   const handleCriteriaChange = (e) => {
     const { name, value, type } = e.target;
     const newValue = type === 'number' ? parseInt(value, 10) : value;
-    setSearchCriteria(prev => {
+    setSearchCriteria((prev) => {
       const updated = { ...prev, [name]: newValue };
       if (name === 'startWeek' && prev.endWeek < newValue) {
         updated.endWeek = newValue;
@@ -196,7 +215,9 @@ export default function App() {
         traineeName,
         contactId: selectedContact?.id,
       });
-      setBookingSuccess(`Successfully booked ${selectedCombination.lab} - Station ${selectedCombination.station} for ${traineeName}.`);
+      setBookingSuccess(
+        `Successfully booked ${selectedCombination.lab} - Station ${selectedCombination.station} for ${traineeName}.`,
+      );
       setSelectedCombination(null);
       setTraineeName('');
       setSelectedContact(null);
@@ -209,66 +230,86 @@ export default function App() {
   };
 
   // --- Grid interaction handlers ---
-  const handleShowStudentInfo = useCallback(async ({ stationId, week }) => {
-    if (!gridData) return;
-    const row = gridData.grid.find(r => r.stationId === stationId);
-    if (!row) return;
+  const handleShowStudentInfo = useCallback(
+    async ({ stationId, week }) => {
+      if (!gridData) return;
+      const row = gridData.grid.find((r) => r.stationId === stationId);
+      if (!row) return;
 
-    const weekIndex = gridData.weeks.indexOf(week);
-    const rawValue = row.availability[weekIndex];
-    if (!rawValue || rawValue === '\u2713' || rawValue === '\u2717') return;
+      const weekIndex = gridData.weeks.indexOf(week);
+      const rawValue = row.availability[weekIndex];
+      if (!rawValue || rawValue === '\u2713' || rawValue === '\u2717') return;
 
-    setStudentInfoDialog({
-      stationId,
-      stationLabel: row.station,
-      shift: gridData.shift,
-      week,
-      studentName: rawValue,
-      loading: true,
-      hubspotContact: null,
-    });
+      setStudentInfoDialog({
+        stationId,
+        stationLabel: row.station,
+        shift: gridData.shift,
+        week,
+        studentName: rawValue,
+        loading: true,
+        hubspotContact: null,
+      });
 
-    try {
-      let contact = await searchContactByName(rawValue);
-      if (!contact && rawValue.includes(' ')) {
-        const nameParts = rawValue.trim().split(/\s+/);
-        if (nameParts[0]) contact = await searchContactByName(nameParts[0]);
-        if (!contact && nameParts[nameParts.length - 1]) contact = await searchContactByName(nameParts[nameParts.length - 1]);
+      try {
+        let contact = await searchContactByName(rawValue);
+        if (!contact && rawValue.includes(' ')) {
+          const nameParts = rawValue.trim().split(/\s+/);
+          if (nameParts[0]) contact = await searchContactByName(nameParts[0]);
+          if (!contact && nameParts[nameParts.length - 1])
+            contact = await searchContactByName(nameParts[nameParts.length - 1]);
+        }
+        setStudentInfoDialog((prev) =>
+          prev ? { ...prev, loading: false, hubspotContact: contact } : null,
+        );
+      } catch {
+        setStudentInfoDialog((prev) => (prev ? { ...prev, loading: false } : null));
       }
-      setStudentInfoDialog(prev => prev ? { ...prev, loading: false, hubspotContact: contact } : null);
-    } catch {
-      setStudentInfoDialog(prev => prev ? { ...prev, loading: false } : null);
-    }
-  }, [gridData]);
+    },
+    [gridData],
+  );
 
-  const handleUnbook = useCallback(async ({ stationId, shift, week }) => {
-    if (!activeCycleId) return;
-    try {
-      await unbookSlot({ cycleId: activeCycleId, stationId, shift, weeks: [week] });
-      await loadGrid();
-      setStudentInfoDialog(null);
-    } catch (err) {
-      setError(err.response?.data?.error || 'Failed to unbook slot.');
-    }
-  }, [activeCycleId, loadGrid]);
+  const handleUnbook = useCallback(
+    async ({ stationId, shift, week }) => {
+      if (!activeCycleId) return;
+      try {
+        await unbookSlot({ cycleId: activeCycleId, stationId, shift, weeks: [week] });
+        await loadGrid();
+        setStudentInfoDialog(null);
+      } catch (err) {
+        setError(err.response?.data?.error || 'Failed to unbook slot.');
+      }
+    },
+    [activeCycleId, loadGrid],
+  );
 
-  const handleUnbookMany = useCallback(async ({ stationId, shift, weeks }) => {
-    if (!activeCycleId) return;
-    try {
-      await unbookSlot({ cycleId: activeCycleId, stationId, shift, weeks });
-      await loadGrid();
-    } catch (err) {
-      setError(err.response?.data?.error || 'Failed to unbook selected slots.');
-    }
-  }, [activeCycleId, loadGrid]);
+  const handleUnbookMany = useCallback(
+    async ({ stationId, shift, weeks }) => {
+      if (!activeCycleId) return;
+      try {
+        await unbookSlot({ cycleId: activeCycleId, stationId, shift, weeks });
+        await loadGrid();
+      } catch (err) {
+        setError(err.response?.data?.error || 'Failed to unbook selected slots.');
+      }
+    },
+    [activeCycleId, loadGrid],
+  );
 
-  const handleBookCell = useCallback(({ stationId, shift, weeks }) => {
-    if (!gridData) return;
-    const row = gridData.grid.find(r => r.stationId === stationId);
-    setCellBookingDialog({ stationId, stationLabel: row?.station || `Station ${stationId}`, shift, weeks });
-    setCellBookingName('');
-    setCellSelectedContact(null);
-  }, [gridData]);
+  const handleBookCell = useCallback(
+    ({ stationId, shift, weeks }) => {
+      if (!gridData) return;
+      const row = gridData.grid.find((r) => r.stationId === stationId);
+      setCellBookingDialog({
+        stationId,
+        stationLabel: row?.station || `Station ${stationId}`,
+        shift,
+        weeks,
+      });
+      setCellBookingName('');
+      setCellSelectedContact(null);
+    },
+    [gridData],
+  );
 
   const handleCellBookingSubmit = useCallback(async () => {
     if (!cellBookingDialog || !cellBookingName.trim() || !activeCycleId) {
@@ -286,9 +327,10 @@ export default function App() {
         traineeName: cellBookingName.trim(),
         contactId: cellSelectedContact?.id,
       });
-      const weeksText = cellBookingDialog.weeks.length > 1
-        ? `weeks ${cellBookingDialog.weeks.join(', ')}`
-        : `week ${cellBookingDialog.weeks[0]}`;
+      const weeksText =
+        cellBookingDialog.weeks.length > 1
+          ? `weeks ${cellBookingDialog.weeks.join(', ')}`
+          : `week ${cellBookingDialog.weeks[0]}`;
       setBookingSuccess(`Successfully booked ${cellBookingDialog.stationLabel} for ${weeksText}!`);
       setCellBookingDialog(null);
       setCellBookingName('');
@@ -337,8 +379,12 @@ export default function App() {
       <div className="mx-auto">
         <header className="mb-6 flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight text-gray-900">Lab Availability Manager</h1>
-            <p className="text-slate-600 mt-1">Find and book available lab stations for trainees.</p>
+            <h1 className="text-3xl font-bold tracking-tight text-gray-900">
+              Lab Availability Manager
+            </h1>
+            <p className="text-slate-600 mt-1">
+              Find and book available lab stations for trainees.
+            </p>
           </div>
           <div className="flex items-center gap-4">
             <button
@@ -362,10 +408,7 @@ export default function App() {
         </header>
 
         {currentView === 'analytics' ? (
-          <AnalyticsDashboard
-            cycles={cycles}
-            onBack={() => setCurrentView('grid')}
-          />
+          <AnalyticsDashboard cycles={cycles} onBack={() => setCurrentView('grid')} />
         ) : (
           <>
             {/* Cycle tabs */}
@@ -426,7 +469,7 @@ export default function App() {
                   <div className="bg-white p-5 rounded-xl shadow-md border border-gray-200">
                     <BookingSection
                       traineeName={traineeName}
-                      onTraineeNameChange={e => setTraineeName(e.target.value)}
+                      onTraineeNameChange={(e) => setTraineeName(e.target.value)}
                       selectedContact={selectedContact}
                       onContactSelect={setSelectedContact}
                       onBook={handleBookSlot}
@@ -482,7 +525,11 @@ export default function App() {
         selectedContact={cellSelectedContact}
         onContactSelect={setCellSelectedContact}
         onSubmit={handleCellBookingSubmit}
-        onCancel={() => { setCellBookingDialog(null); setCellBookingName(''); setCellSelectedContact(null); }}
+        onCancel={() => {
+          setCellBookingDialog(null);
+          setCellBookingName('');
+          setCellSelectedContact(null);
+        }}
         isBooking={isBooking}
       />
       <StudentInfoDialog

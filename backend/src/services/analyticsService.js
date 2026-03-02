@@ -15,7 +15,7 @@ async function resolveCycles(year, cycleId) {
 
 async function getSeatingAnalytics(year, cycleId = null) {
   const cycles = await resolveCycles(year, cycleId);
-  const cycleIds = cycles.map(c => c.id);
+  const cycleIds = cycles.map((c) => c.id);
   const numCycles = cycles.length;
 
   const stations = await prisma.station.findMany({ include: { lab: true } });
@@ -29,7 +29,7 @@ async function getSeatingAnalytics(year, cycleId = null) {
   const weekOccupancy = Array.from({ length: 12 }, (_, i) => {
     const week = i + 1;
     const totalSlots = totalStationsCount * 2 * numCycles;
-    const booked = bookings.filter(b => b.week === week).length;
+    const booked = bookings.filter((b) => b.week === week).length;
     return {
       week,
       totalSlots,
@@ -53,14 +53,16 @@ async function getSeatingAnalytics(year, cycleId = null) {
     labStationCounts[labName] = stationIds.length;
     bookingMatrix[labName] = {};
     for (let w = 1; w <= 12; w++) {
-      bookingMatrix[labName][w] = bookings.filter(b => stationIdSet.has(b.stationId) && b.week === w).length;
+      bookingMatrix[labName][w] = bookings.filter(
+        (b) => stationIdSet.has(b.stationId) && b.week === w,
+      ).length;
     }
   }
 
   const labOccupancy = Array.from(labMap.entries()).map(([labName, stationIds]) => {
     const stationIdSet = new Set(stationIds);
     const totalSlots = stationIds.length * 12 * 2 * numCycles;
-    const booked = bookings.filter(b => stationIdSet.has(b.stationId)).length;
+    const booked = bookings.filter((b) => stationIdSet.has(b.stationId)).length;
     return {
       lab: labName,
       totalSlots,
@@ -69,9 +71,9 @@ async function getSeatingAnalytics(year, cycleId = null) {
     };
   });
 
-  const shiftOccupancy = ['AM', 'PM'].map(shift => {
+  const shiftOccupancy = ['AM', 'PM'].map((shift) => {
     const totalSlots = totalStationsCount * 12 * numCycles;
-    const booked = bookings.filter(b => b.shift === shift).length;
+    const booked = bookings.filter((b) => b.shift === shift).length;
     return {
       shift,
       totalSlots,
@@ -96,9 +98,9 @@ async function getRegistrationAnalytics(year, shift, cycleId = null) {
   const cycles = await resolveCycles(year, cycleId);
 
   const shifts = shift === 'BOTH' ? ['AM', 'PM'] : [shift];
-  const tasks = cycles.flatMap(cycle => shifts.map(s => ({ cycle, shift: s })));
+  const tasks = cycles.flatMap((cycle) => shifts.map((s) => ({ cycle, shift: s })));
   const results = await Promise.allSettled(
-    tasks.map(t => registrationService.getRegistrationList(t.cycle.id, t.shift, false))
+    tasks.map((t) => registrationService.getRegistrationList(t.cycle.id, t.shift, false)),
   );
 
   const allRows = [];
@@ -109,16 +111,22 @@ async function getRegistrationAnalytics(year, shift, cycleId = null) {
       allRows.push(...result.value.rows);
     } else {
       const err = result.reason;
-      const msg = err.statusCode === 503
-        ? 'HubSpot API not configured'
-        : (err.message || 'Unknown error');
-      warnings.push({ cycleId: tasks[i].cycle.id, cycleName: tasks[i].cycle.name, shift: tasks[i].shift, error: msg });
+      const msg =
+        err.statusCode === 503 ? 'HubSpot API not configured' : err.message || 'Unknown error';
+      warnings.push({
+        cycleId: tasks[i].cycle.id,
+        cycleName: tasks[i].cycle.name,
+        shift: tasks[i].shift,
+        error: msg,
+      });
     }
   }
 
   const seen = new Set();
-  const deduped = allRows.filter(row => {
-    const key = row.contactId || `${(row.firstName || '').toLowerCase()}_${(row.lastName || '').toLowerCase()}`;
+  const deduped = allRows.filter((row) => {
+    const key =
+      row.contactId ||
+      `${(row.firstName || '').toLowerCase()}_${(row.lastName || '').toLowerCase()}`;
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
@@ -145,9 +153,9 @@ async function getRegistrationAnalytics(year, shift, cycleId = null) {
     .sort((a, b) => a.cycleNumber - b.cycleNumber);
 
   const programCounts = {
-    roadmap: deduped.filter(r => r.hasRoadmap).length,
-    afk: deduped.filter(r => r.hasAFK).length,
-    acj: deduped.filter(r => r.hasACJ).length,
+    roadmap: deduped.filter((r) => r.hasRoadmap).length,
+    afk: deduped.filter((r) => r.hasAFK).length,
+    acj: deduped.filter((r) => r.hasACJ).length,
   };
 
   return { totalStudents, paymentDistribution, cycleCountDistribution, programCounts, warnings };

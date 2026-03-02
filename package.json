@@ -1,0 +1,18 @@
+{
+  "name": "ndecc-sched-app",
+  "private": true,
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "scripts": {
+    "prepare": "husky",
+    "lint": "cd backend && npm run lint && cd ../frontend && npm run lint",
+    "format:check": "prettier --check \"backend/src/**/*.js\" \"frontend/src/**/*.{js,jsx}\"",
+    "format": "prettier --write \"backend/src/**/*.js\" \"frontend/src/**/*.{js,jsx}\""
+  },
+  "devDependencies": {
+    "husky": "^9.1.0",
+    "lint-staged": "^15.4.0",
+    "prettier": "^3.4.0"
+  }
+}

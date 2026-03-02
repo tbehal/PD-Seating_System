@@ -6,13 +6,16 @@ const createCycle = Joi.object({
 });
 
 const updateWeeks = Joi.object({
-  weeks: Joi.array().items(
-    Joi.object({
-      week: Joi.number().integer().min(1).max(12).required(),
-      startDate: Joi.date().iso().allow(null).optional(),
-      endDate: Joi.date().iso().allow(null).optional(),
-    })
-  ).min(1).required(),
+  weeks: Joi.array()
+    .items(
+      Joi.object({
+        week: Joi.number().integer().min(1).max(12).required(),
+        startDate: Joi.date().iso().allow(null).optional(),
+        endDate: Joi.date().iso().allow(null).optional(),
+      }),
+    )
+    .min(1)
+    .required(),
 });
 
 const updateCourseCodes = Joi.object({

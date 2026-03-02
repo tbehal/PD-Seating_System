@@ -1,6 +1,14 @@
 import React, { useState } from 'react';
 
-export default function CycleTabs({ cycles, activeCycleId, onSelectCycle, onCreateCycle, onDeleteCycle, onLockCycle, onUnlockCycle }) {
+export default function CycleTabs({
+  cycles,
+  activeCycleId,
+  onSelectCycle,
+  onCreateCycle,
+  onDeleteCycle,
+  onLockCycle,
+  onUnlockCycle,
+}) {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [newCycleYear, setNewCycleYear] = useState(new Date().getFullYear());
   const [courseCodesInput, setCourseCodesInput] = useState('');
@@ -13,7 +21,7 @@ export default function CycleTabs({ cycles, activeCycleId, onSelectCycle, onCrea
     try {
       const codes = courseCodesInput
         .split('\n')
-        .map(s => s.trim())
+        .map((s) => s.trim())
         .filter(Boolean);
       await onCreateCycle(newCycleYear, codes);
       setShowCreateDialog(false);
@@ -66,7 +74,11 @@ export default function CycleTabs({ cycles, activeCycleId, onSelectCycle, onCrea
           >
             {cycle.locked && (
               <svg className="w-3.5 h-3.5 text-amber-500" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                <path
+                  fillRule="evenodd"
+                  d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
+                  clipRule="evenodd"
+                />
               </svg>
             )}
             {cycle.name}
@@ -76,7 +88,12 @@ export default function CycleTabs({ cycles, activeCycleId, onSelectCycle, onCrea
               title="Delete cycle"
             >
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
               </svg>
             </span>
           </button>
@@ -100,7 +117,9 @@ export default function CycleTabs({ cycles, activeCycleId, onSelectCycle, onCrea
             <h3 className="text-lg font-bold text-slate-800 mb-4">Create New Cycle</h3>
             <div className="space-y-4">
               <div>
-                <label htmlFor="cycleYear" className="block text-sm font-medium text-gray-700 mb-1">Year</label>
+                <label htmlFor="cycleYear" className="block text-sm font-medium text-gray-700 mb-1">
+                  Year
+                </label>
                 <input
                   type="number"
                   id="cycleYear"
@@ -112,8 +131,12 @@ export default function CycleTabs({ cycles, activeCycleId, onSelectCycle, onCrea
                 />
               </div>
               <div>
-                <label htmlFor="courseCodes" className="block text-sm font-medium text-gray-700 mb-1">
-                  Course Codes <span className="text-gray-400 font-normal">(optional, one per line)</span>
+                <label
+                  htmlFor="courseCodes"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
+                  Course Codes{' '}
+                  <span className="text-gray-400 font-normal">(optional, one per line)</span>
                 </label>
                 <textarea
                   id="courseCodes"
@@ -121,7 +144,7 @@ export default function CycleTabs({ cycles, activeCycleId, onSelectCycle, onCrea
                   onChange={(e) => setCourseCodesInput(e.target.value)}
                   rows={4}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm font-mono"
-                  placeholder={"NDC-26-Mis1-Clinical-AM\nNDC-26-Mis1-Clinical-PM"}
+                  placeholder={'NDC-26-Mis1-Clinical-AM\nNDC-26-Mis1-Clinical-PM'}
                 />
               </div>
               <div className="flex gap-3">
@@ -150,7 +173,9 @@ export default function CycleTabs({ cycles, activeCycleId, onSelectCycle, onCrea
           <div className="bg-white rounded-xl shadow-2xl max-w-sm w-full p-6">
             <h3 className="text-lg font-bold text-slate-800 mb-2">Delete Cycle</h3>
             <p className="text-sm text-gray-600 mb-4">
-              Are you sure you want to delete <span className="font-semibold">{deleteConfirm.name}</span>? All bookings and week data for this cycle will be permanently removed.
+              Are you sure you want to delete{' '}
+              <span className="font-semibold">{deleteConfirm.name}</span>? All bookings and week
+              data for this cycle will be permanently removed.
             </p>
             <div className="flex gap-3">
               <button

@@ -42,10 +42,15 @@ describe('AvailabilityGrid', () => {
   test('renders "W1" with no date subtitle when dates are null', () => {
     render(
       <AvailabilityGrid
-        data={makeData({ weekDates: [{ week: 1, startDate: null, endDate: null }, { week: 2, startDate: null, endDate: null }] })}
+        data={makeData({
+          weekDates: [
+            { week: 1, startDate: null, endDate: null },
+            { week: 2, startDate: null, endDate: null },
+          ],
+        })}
         locked={false}
         {...defaultProps}
-      />
+      />,
     );
 
     // W1 header should exist
@@ -67,7 +72,7 @@ describe('AvailabilityGrid', () => {
         })}
         locked={false}
         {...defaultProps}
-      />
+      />,
     );
 
     expect(screen.getByText('W1')).toBeInTheDocument();
@@ -79,10 +84,15 @@ describe('AvailabilityGrid', () => {
     const user = userEvent.setup();
     render(
       <AvailabilityGrid
-        data={makeData({ weekDates: [{ week: 1, startDate: null, endDate: null }, { week: 2, startDate: null, endDate: null }] })}
+        data={makeData({
+          weekDates: [
+            { week: 1, startDate: null, endDate: null },
+            { week: 2, startDate: null, endDate: null },
+          ],
+        })}
         locked={false}
         {...defaultProps}
-      />
+      />,
     );
 
     // Click W1 header
@@ -97,10 +107,15 @@ describe('AvailabilityGrid', () => {
     const user = userEvent.setup();
     render(
       <AvailabilityGrid
-        data={makeData({ weekDates: [{ week: 1, startDate: null, endDate: null }, { week: 2, startDate: null, endDate: null }] })}
+        data={makeData({
+          weekDates: [
+            { week: 1, startDate: null, endDate: null },
+            { week: 2, startDate: null, endDate: null },
+          ],
+        })}
         locked={true}
         {...defaultProps}
-      />
+      />,
     );
 
     await user.click(screen.getByText('W1'));
@@ -113,10 +128,15 @@ describe('AvailabilityGrid', () => {
     const user = userEvent.setup();
     render(
       <AvailabilityGrid
-        data={makeData({ weekDates: [{ week: 1, startDate: null, endDate: null }, { week: 2, startDate: null, endDate: null }] })}
+        data={makeData({
+          weekDates: [
+            { week: 1, startDate: null, endDate: null },
+            { week: 2, startDate: null, endDate: null },
+          ],
+        })}
         locked={false}
         {...defaultProps}
-      />
+      />,
     );
 
     await user.click(screen.getByText('W1'));
@@ -132,11 +152,16 @@ describe('AvailabilityGrid', () => {
     const user = userEvent.setup();
     render(
       <AvailabilityGrid
-        data={makeData({ weekDates: [{ week: 1, startDate: null, endDate: null }, { week: 2, startDate: null, endDate: null }] })}
+        data={makeData({
+          weekDates: [
+            { week: 1, startDate: null, endDate: null },
+            { week: 2, startDate: null, endDate: null },
+          ],
+        })}
         locked={false}
         {...defaultProps}
         onUpdateWeekDates={onUpdateWeekDates}
-      />
+      />,
     );
 
     // Open popover for W1

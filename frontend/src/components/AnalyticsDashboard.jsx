@@ -1,7 +1,16 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
-  ResponsiveContainer, PieChart, Pie, Cell,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
 } from 'recharts';
 import { fetchSeatingAnalytics, fetchRegistrationAnalytics } from '../api';
 import { toast } from 'sonner';
@@ -44,7 +53,11 @@ function SkeletonChart() {
   return (
     <div className="h-[300px] flex items-end gap-3 px-2 pt-4">
       {[60, 85, 45, 70, 55, 90, 40].map((h, i) => (
-        <div key={i} className="animate-pulse bg-gray-200 rounded flex-1" style={{ height: `${h}%` }} />
+        <div
+          key={i}
+          className="animate-pulse bg-gray-200 rounded flex-1"
+          style={{ height: `${h}%` }}
+        />
       ))}
     </div>
   );
@@ -53,11 +66,7 @@ function SkeletonChart() {
 // ─── Error message ────────────────────────────────────────────────────────────
 
 function ErrorMsg({ msg }) {
-  return (
-    <div className="bg-red-50 text-red-700 rounded-lg p-3 text-sm">
-      {msg}
-    </div>
-  );
+  return <div className="bg-red-50 text-red-700 rounded-lg p-3 text-sm">{msg}</div>;
 }
 
 // ─── ChartCard wrapper ────────────────────────────────────────────────────────
@@ -66,13 +75,7 @@ function ChartCard({ title, children, loading, error }) {
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
       <h3 className="text-base font-semibold text-gray-800 mb-4">{title}</h3>
-      {loading ? (
-        <SkeletonChart />
-      ) : error ? (
-        <ErrorMsg msg={error} />
-      ) : (
-        children
-      )}
+      {loading ? <SkeletonChart /> : error ? <ErrorMsg msg={error} /> : children}
     </div>
   );
 }
@@ -94,7 +97,13 @@ function SummaryCard({ label, value, loading }) {
 
 // ─── Multi-select filter dropdown ─────────────────────────────────────────────
 
-function MultiSelectFilter({ label, options, selected, onChange, formatOption = (v) => String(v) }) {
+function MultiSelectFilter({
+  label,
+  options,
+  selected,
+  onChange,
+  formatOption = (v) => String(v),
+}) {
   const [open, setOpen] = useState(false);
   const allSelected = selected.length === options.length;
   const ref = React.useRef(null);
@@ -109,7 +118,7 @@ function MultiSelectFilter({ label, options, selected, onChange, formatOption = 
 
   const toggle = (val) => {
     if (selected.includes(val)) {
-      const next = selected.filter(v => v !== val);
+      const next = selected.filter((v) => v !== val);
       onChange(next.length === 0 ? options : next);
     } else {
       onChange([...selected, val]);
@@ -135,7 +144,12 @@ function MultiSelectFilter({ label, options, selected, onChange, formatOption = 
         className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-gray-300 rounded-lg bg-white text-gray-700 hover:bg-gray-50 transition-colors"
       >
         {displayText}
-        <svg className={`w-3.5 h-3.5 transition-transform ${open ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg
+          className={`w-3.5 h-3.5 transition-transform ${open ? 'rotate-180' : ''}`}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
         </svg>
       </button>
@@ -150,8 +164,11 @@ function MultiSelectFilter({ label, options, selected, onChange, formatOption = 
             />
             Select All
           </label>
-          {options.map(opt => (
-            <label key={opt} className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50 cursor-pointer text-xs text-gray-700">
+          {options.map((opt) => (
+            <label
+              key={opt}
+              className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50 cursor-pointer text-xs text-gray-700"
+            >
               <input
                 type="checkbox"
                 checked={selected.includes(opt)}
@@ -170,7 +187,7 @@ function MultiSelectFilter({ label, options, selected, onChange, formatOption = 
 // ─── Week Occupancy chart ─────────────────────────────────────────────────────
 
 function WeekOccupancyChart({ data }) {
-  const formatted = (data || []).map(d => ({
+  const formatted = (data || []).map((d) => ({
     ...d,
     label: `Wk ${d.week}`,
   }));
@@ -180,7 +197,12 @@ function WeekOccupancyChart({ data }) {
       <BarChart data={formatted} margin={{ top: 4, right: 16, left: 0, bottom: 4 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
         <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#6b7280' }} />
-        <YAxis domain={[0, 100]} tickFormatter={v => `${v}%`} tick={{ fontSize: 11, fill: '#6b7280' }} width={42} />
+        <YAxis
+          domain={[0, 100]}
+          tickFormatter={(v) => `${v}%`}
+          tick={{ fontSize: 11, fill: '#6b7280' }}
+          width={42}
+        />
         <Tooltip
           content={({ active, payload, label }) => {
             if (!active || !payload?.length) return null;
@@ -188,8 +210,12 @@ function WeekOccupancyChart({ data }) {
             return (
               <div className="bg-white border border-gray-200 rounded-lg shadow-md p-3 text-sm">
                 <p className="font-semibold text-gray-800 mb-1">{`Week ${d?.week}`}</p>
-                <p className="text-xs text-gray-600">Booked: {d?.booked} / {d?.totalSlots}</p>
-                <p className="text-xs" style={{ color: BRAND[500] }}>Occupancy: {d?.percent?.toFixed(1)}%</p>
+                <p className="text-xs text-gray-600">
+                  Booked: {d?.booked} / {d?.totalSlots}
+                </p>
+                <p className="text-xs" style={{ color: BRAND[500] }}>
+                  Occupancy: {d?.percent?.toFixed(1)}%
+                </p>
               </div>
             );
           }}
@@ -208,7 +234,12 @@ function LabOccupancyChart({ data }) {
       <BarChart data={data || []} margin={{ top: 4, right: 16, left: 0, bottom: 4 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
         <XAxis dataKey="lab" tick={{ fontSize: 11, fill: '#6b7280' }} />
-        <YAxis domain={[0, 100]} tickFormatter={v => `${v}%`} tick={{ fontSize: 11, fill: '#6b7280' }} width={42} />
+        <YAxis
+          domain={[0, 100]}
+          tickFormatter={(v) => `${v}%`}
+          tick={{ fontSize: 11, fill: '#6b7280' }}
+          width={42}
+        />
         <Tooltip
           content={({ active, payload }) => {
             if (!active || !payload?.length) return null;
@@ -216,8 +247,12 @@ function LabOccupancyChart({ data }) {
             return (
               <div className="bg-white border border-gray-200 rounded-lg shadow-md p-3 text-sm">
                 <p className="font-semibold text-gray-800 mb-1">{d?.lab}</p>
-                <p className="text-xs text-gray-600">Booked: {d?.booked} / {d?.totalSlots}</p>
-                <p className="text-xs" style={{ color: BRAND[400] }}>Occupancy: {d?.percent?.toFixed(1)}%</p>
+                <p className="text-xs text-gray-600">
+                  Booked: {d?.booked} / {d?.totalSlots}
+                </p>
+                <p className="text-xs" style={{ color: BRAND[400] }}>
+                  Occupancy: {d?.percent?.toFixed(1)}%
+                </p>
               </div>
             );
           }}
@@ -237,7 +272,12 @@ function ShiftComparisonChart({ data }) {
       <BarChart data={data || []} margin={{ top: 4, right: 24, left: 0, bottom: 4 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
         <XAxis dataKey="shift" tick={{ fontSize: 12, fill: '#6b7280' }} />
-        <YAxis domain={[0, 100]} tickFormatter={v => `${v}%`} tick={{ fontSize: 11, fill: '#6b7280' }} width={42} />
+        <YAxis
+          domain={[0, 100]}
+          tickFormatter={(v) => `${v}%`}
+          tick={{ fontSize: 11, fill: '#6b7280' }}
+          width={42}
+        />
         <Tooltip
           content={({ active, payload }) => {
             if (!active || !payload?.length) return null;
@@ -245,8 +285,12 @@ function ShiftComparisonChart({ data }) {
             return (
               <div className="bg-white border border-gray-200 rounded-lg shadow-md p-3 text-sm">
                 <p className="font-semibold text-gray-800 mb-1">{d?.shift} Shift</p>
-                <p className="text-xs text-gray-600">Booked: {d?.booked} / {d?.totalSlots}</p>
-                <p className="text-xs" style={{ color: colorMap[d?.shift] || BRAND[500] }}>Occupancy: {d?.percent?.toFixed(1)}%</p>
+                <p className="text-xs text-gray-600">
+                  Booked: {d?.booked} / {d?.totalSlots}
+                </p>
+                <p className="text-xs" style={{ color: colorMap[d?.shift] || BRAND[500] }}>
+                  Occupancy: {d?.percent?.toFixed(1)}%
+                </p>
               </div>
             );
           }}
@@ -270,7 +314,14 @@ function PaymentPieChart({ data }) {
     const x = cx + radius * Math.cos(-midAngle * RADIAN);
     const y = cy + radius * Math.sin(-midAngle * RADIAN);
     return (
-      <text x={x} y={y} fill="#374151" textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central" fontSize={11}>
+      <text
+        x={x}
+        y={y}
+        fill="#374151"
+        textAnchor={x > cx ? 'start' : 'end'}
+        dominantBaseline="central"
+        fontSize={11}
+      >
         {`${name} (${count})`}
       </text>
     );
@@ -318,7 +369,11 @@ function PaymentPieChart({ data }) {
 function ProgramChart({ data }) {
   return (
     <ResponsiveContainer width="100%" height={300}>
-      <BarChart data={data || []} layout="vertical" margin={{ top: 4, right: 32, left: 16, bottom: 4 }}>
+      <BarChart
+        data={data || []}
+        layout="vertical"
+        margin={{ top: 4, right: 32, left: 16, bottom: 4 }}
+      >
         <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={false} />
         <XAxis type="number" tick={{ fontSize: 11, fill: '#6b7280' }} />
         <YAxis dataKey="name" type="category" width={70} tick={{ fontSize: 12, fill: '#374151' }} />
@@ -347,7 +402,7 @@ function ProgramChart({ data }) {
 // ─── Cycle Count Distribution chart ──────────────────────────────────────────
 
 function CycleCountChart({ data }) {
-  const formatted = (data || []).map(d => ({
+  const formatted = (data || []).map((d) => ({
     ...d,
     label: ORDINAL_SUFFIX(d.cycleNumber),
   }));
@@ -364,7 +419,9 @@ function CycleCountChart({ data }) {
             const d = payload[0]?.payload;
             return (
               <div className="bg-white border border-gray-200 rounded-lg shadow-md p-3 text-sm">
-                <p className="font-semibold text-gray-800">{ORDINAL_SUFFIX(d?.cycleNumber)} Cycle</p>
+                <p className="font-semibold text-gray-800">
+                  {ORDINAL_SUFFIX(d?.cycleNumber)} Cycle
+                </p>
                 <p className="text-xs text-gray-600">Students: {d?.count}</p>
               </div>
             );
@@ -382,7 +439,7 @@ export default function AnalyticsDashboard({ cycles, onBack }) {
   const currentYear = new Date().getFullYear();
 
   const availableYears = useMemo(() => {
-    const years = [...new Set((cycles || []).map(c => c.year))].sort((a, b) => b - a);
+    const years = [...new Set((cycles || []).map((c) => c.year))].sort((a, b) => b - a);
     return years.length > 0 ? years : [currentYear];
   }, [cycles, currentYear]);
 
@@ -402,8 +459,8 @@ export default function AnalyticsDashboard({ cycles, onBack }) {
   const [exporting, setExporting] = useState(false);
 
   const cyclesForYear = useMemo(
-    () => (cycles || []).filter(c => c.year === selectedYear),
-    [cycles, selectedYear]
+    () => (cycles || []).filter((c) => c.year === selectedYear),
+    [cycles, selectedYear],
   );
 
   // Reset cycle selection when year changes
@@ -425,12 +482,14 @@ export default function AnalyticsDashboard({ cycles, onBack }) {
     setSeatingError(null);
 
     fetchSeatingAnalytics(selectedYear, selectedCycleId || null)
-      .then(data => {
+      .then((data) => {
         if (!cancelled) setSeatingData(data);
       })
-      .catch(err => {
+      .catch((err) => {
         if (!cancelled) {
-          setSeatingError(err.response?.data?.error || err.message || 'Failed to load seating data.');
+          setSeatingError(
+            err.response?.data?.error || err.message || 'Failed to load seating data.',
+          );
           setSeatingData(null);
         }
       })
@@ -438,7 +497,9 @@ export default function AnalyticsDashboard({ cycles, onBack }) {
         if (!cancelled) setSeatingLoading(false);
       });
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [selectedYear, selectedCycleId, cyclesForYear]);
 
   // Fetch registration analytics
@@ -455,16 +516,18 @@ export default function AnalyticsDashboard({ cycles, onBack }) {
     setRegistrationError(null);
 
     fetchRegistrationAnalytics(selectedYear, shift, selectedCycleId || null)
-      .then(data => {
+      .then((data) => {
         if (!cancelled) setRegistrationData(data);
       })
-      .catch(err => {
+      .catch((err) => {
         if (!cancelled) {
           const status = err.response?.status;
           if (status === 503) {
             setRegistrationError('HubSpot not configured. Registration analytics unavailable.');
           } else {
-            setRegistrationError(err.response?.data?.error || err.message || 'Failed to load registration data.');
+            setRegistrationError(
+              err.response?.data?.error || err.message || 'Failed to load registration data.',
+            );
           }
           setRegistrationData(null);
         }
@@ -473,7 +536,9 @@ export default function AnalyticsDashboard({ cycles, onBack }) {
         if (!cancelled) setRegistrationLoading(false);
       });
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [selectedYear, selectedCycleId, shift, cyclesForYear]);
 
   useEffect(() => {
@@ -490,13 +555,13 @@ export default function AnalyticsDashboard({ cycles, onBack }) {
   // Derive summary values
   const summary = seatingData?.summary ?? {};
   const totalStudents = registrationData?.totalStudents ?? null;
-  const amShift = seatingData?.shiftOccupancy?.find(s => s.shift === 'AM');
-  const pmShift = seatingData?.shiftOccupancy?.find(s => s.shift === 'PM');
+  const amShift = seatingData?.shiftOccupancy?.find((s) => s.shift === 'AM');
+  const pmShift = seatingData?.shiftOccupancy?.find((s) => s.shift === 'PM');
 
   // Lab names and week numbers for filters
   const labNames = useMemo(() => {
     if (!seatingData?.labOccupancy) return [];
-    return seatingData.labOccupancy.map(l => l.lab);
+    return seatingData.labOccupancy.map((l) => l.lab);
   }, [seatingData?.labOccupancy]);
 
   const weekNumbers = useMemo(() => Array.from({ length: 12 }, (_, i) => i + 1), []);
@@ -519,7 +584,8 @@ export default function AnalyticsDashboard({ cycles, onBack }) {
     const matrix = seatingData?.bookingMatrix;
     const stationCounts = seatingData?.labStationCounts;
     const numCycles = seatingData?.summary?.numCycles || 1;
-    if (!matrix || !stationCounts || selectedLabs.length === 0) return seatingData?.weekOccupancy || [];
+    if (!matrix || !stationCounts || selectedLabs.length === 0)
+      return seatingData?.weekOccupancy || [];
 
     const allLabs = Object.keys(stationCounts);
     const isAllSelected = selectedLabs.length === allLabs.length;
@@ -544,7 +610,8 @@ export default function AnalyticsDashboard({ cycles, onBack }) {
     const matrix = seatingData?.bookingMatrix;
     const stationCounts = seatingData?.labStationCounts;
     const numCycles = seatingData?.summary?.numCycles || 1;
-    if (!matrix || !stationCounts || selectedWeeks.length === 0) return seatingData?.labOccupancy || [];
+    if (!matrix || !stationCounts || selectedWeeks.length === 0)
+      return seatingData?.labOccupancy || [];
 
     if (selectedWeeks.length === 12) return seatingData?.labOccupancy || [];
 
@@ -613,7 +680,7 @@ export default function AnalyticsDashboard({ cycles, onBack }) {
       const filterParts = [];
       if (selectedYear) filterParts.push(`Year: ${selectedYear}`);
       if (selectedCycleId) {
-        const name = cyclesForYear.find(c => c.id === selectedCycleId)?.name || selectedCycleId;
+        const name = cyclesForYear.find((c) => c.id === selectedCycleId)?.name || selectedCycleId;
         filterParts.push(`Cycle: ${name}`);
       }
       if (shift) filterParts.push(`Shift: ${shift === 'BOTH' ? 'AM + PM' : shift}`);
@@ -626,7 +693,9 @@ export default function AnalyticsDashboard({ cycles, onBack }) {
 
       // ── Hide interactive elements before capture ──
       hiddenElements = Array.from(printRef.current.querySelectorAll('[data-pdf-hide]'));
-      hiddenElements.forEach(el => { el.style.display = 'none'; });
+      hiddenElements.forEach((el) => {
+        el.style.display = 'none';
+      });
 
       // ── Capture each section individually (smart page breaks) ──
       const sections = Array.from(printRef.current.children);
@@ -673,7 +742,7 @@ export default function AnalyticsDashboard({ cycles, onBack }) {
       if (!exportCancelledRef.current) {
         const timestamp = `${dateStr}-${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`;
         const cycleSuffix = selectedCycleId
-          ? `-${(cyclesForYear.find(c => c.id === selectedCycleId)?.name || 'cycle').replace(/\s+/g, '-')}`
+          ? `-${(cyclesForYear.find((c) => c.id === selectedCycleId)?.name || 'cycle').replace(/\s+/g, '-')}`
           : '';
         pdf.save(`analytics-report-${selectedYear || 'all'}${cycleSuffix}-${timestamp}.pdf`);
         toast.success('PDF exported successfully');
@@ -682,7 +751,9 @@ export default function AnalyticsDashboard({ cycles, onBack }) {
       console.error('PDF export failed:', err);
       toast.error('PDF export failed. Please try again.');
     } finally {
-      hiddenElements.forEach(el => { el.style.display = ''; });
+      hiddenElements.forEach((el) => {
+        el.style.display = '';
+      });
       setExporting(false);
     }
   };
@@ -692,9 +763,25 @@ export default function AnalyticsDashboard({ cycles, onBack }) {
       {exporting && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/70 backdrop-blur-md">
           <div className="flex flex-col items-center gap-3">
-            <svg className="animate-spin h-8 w-8 text-brand-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            <svg
+              className="animate-spin h-8 w-8 text-brand-500"
+              xmlns="http://www.w3.org/2000/svg"
+              fill="none"
+              viewBox="0 0 24 24"
+            >
+              <circle
+                className="opacity-25"
+                cx="12"
+                cy="12"
+                r="10"
+                stroke="currentColor"
+                strokeWidth="4"
+              ></circle>
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+              ></path>
             </svg>
             <p className="text-sm font-medium text-gray-700">Generating PDF...</p>
             <p className="text-xs text-gray-400">Press Esc to cancel</p>
@@ -710,7 +797,12 @@ export default function AnalyticsDashboard({ cycles, onBack }) {
           className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M10 19l-7-7m0 0l7-7m-7 7h18"
+            />
           </svg>
           Back
         </button>
@@ -721,25 +813,29 @@ export default function AnalyticsDashboard({ cycles, onBack }) {
           {/* Year filter */}
           <select
             value={selectedYear}
-            onChange={e => setSelectedYear(Number(e.target.value))}
+            onChange={(e) => setSelectedYear(Number(e.target.value))}
             disabled={exporting}
             className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {availableYears.map(y => (
-              <option key={y} value={y}>{y}</option>
+            {availableYears.map((y) => (
+              <option key={y} value={y}>
+                {y}
+              </option>
             ))}
           </select>
 
           {/* Cycle filter */}
           <select
             value={selectedCycleId ?? ''}
-            onChange={e => setSelectedCycleId(e.target.value ? Number(e.target.value) : null)}
+            onChange={(e) => setSelectedCycleId(e.target.value ? Number(e.target.value) : null)}
             disabled={exporting}
             className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <option value="">All Cycles</option>
-            {cyclesForYear.map(c => (
-              <option key={c.id} value={c.id}>{c.name}</option>
+            {cyclesForYear.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
             ))}
           </select>
 
@@ -751,16 +847,43 @@ export default function AnalyticsDashboard({ cycles, onBack }) {
           >
             {exporting ? (
               <>
-                <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                <svg
+                  className="animate-spin h-4 w-4"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  ></circle>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  ></path>
                 </svg>
                 Exporting...
               </>
             ) : (
               <>
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="h-4 w-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                  />
                 </svg>
                 Export PDF
               </>
@@ -780,22 +903,24 @@ export default function AnalyticsDashboard({ cycles, onBack }) {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <SummaryCard
               label="Overall Occupancy"
-              value={summary.overallPercent != null ? `${summary.overallPercent.toFixed(1)}%` : null}
+              value={
+                summary.overallPercent !== null ? `${summary.overallPercent.toFixed(1)}%` : null
+              }
               loading={seatingLoading}
             />
             <SummaryCard
               label="Total Students"
-              value={totalStudents != null ? totalStudents : (registrationLoading ? null : '—')}
+              value={totalStudents !== null ? totalStudents : registrationLoading ? null : '—'}
               loading={registrationLoading}
             />
             <SummaryCard
               label="AM Occupancy"
-              value={amShift?.percent != null ? `${amShift.percent.toFixed(1)}%` : null}
+              value={amShift?.percent !== null ? `${amShift.percent.toFixed(1)}%` : null}
               loading={seatingLoading}
             />
             <SummaryCard
               label="PM Occupancy"
-              value={pmShift?.percent != null ? `${pmShift.percent.toFixed(1)}%` : null}
+              value={pmShift?.percent !== null ? `${pmShift.percent.toFixed(1)}%` : null}
               loading={seatingLoading}
             />
           </div>
@@ -831,7 +956,7 @@ export default function AnalyticsDashboard({ cycles, onBack }) {
                       options={weekNumbers}
                       selected={selectedWeeks}
                       onChange={setSelectedWeeks}
-                      formatOption={w => `Wk ${w}`}
+                      formatOption={(w) => `Wk ${w}`}
                     />
                   </div>
                   <LabOccupancyChart data={filteredLabOccupancy} />
@@ -856,7 +981,7 @@ export default function AnalyticsDashboard({ cycles, onBack }) {
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold text-gray-900">Registration Analytics</h3>
               <div className="flex gap-1 bg-gray-100 p-1 rounded-lg" data-pdf-hide>
-                {['AM', 'PM', 'BOTH'].map(s => (
+                {['AM', 'PM', 'BOTH'].map((s) => (
                   <button
                     key={s}
                     onClick={() => setShift(s)}
@@ -873,30 +998,48 @@ export default function AnalyticsDashboard({ cycles, onBack }) {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <ChartCard title="Payment Status" loading={registrationLoading} error={registrationError}>
-              {registrationData?.paymentDistribution?.length ? (
-                <PaymentPieChart data={registrationData.paymentDistribution} />
-              ) : (
-                <p className="text-gray-500 text-center py-12 text-sm">No payment data available.</p>
-              )}
-            </ChartCard>
+              <ChartCard
+                title="Payment Status"
+                loading={registrationLoading}
+                error={registrationError}
+              >
+                {registrationData?.paymentDistribution?.length ? (
+                  <PaymentPieChart data={registrationData.paymentDistribution} />
+                ) : (
+                  <p className="text-gray-500 text-center py-12 text-sm">
+                    No payment data available.
+                  </p>
+                )}
+              </ChartCard>
 
-            <ChartCard title="Program Participation" loading={registrationLoading} error={registrationError}>
-              {programCounts.some(p => p.count > 0) ? (
-                <ProgramChart data={programCounts} />
-              ) : (
-                <p className="text-gray-500 text-center py-12 text-sm">No program data available.</p>
-              )}
-            </ChartCard>
+              <ChartCard
+                title="Program Participation"
+                loading={registrationLoading}
+                error={registrationError}
+              >
+                {programCounts.some((p) => p.count > 0) ? (
+                  <ProgramChart data={programCounts} />
+                ) : (
+                  <p className="text-gray-500 text-center py-12 text-sm">
+                    No program data available.
+                  </p>
+                )}
+              </ChartCard>
             </div>
           </div>
 
           {/* Cycle count distribution (full width) */}
-          <ChartCard title="Cycle Count Distribution" loading={registrationLoading} error={registrationError}>
+          <ChartCard
+            title="Cycle Count Distribution"
+            loading={registrationLoading}
+            error={registrationError}
+          >
             {registrationData?.cycleCountDistribution?.length ? (
               <CycleCountChart data={registrationData.cycleCountDistribution} />
             ) : (
-              <p className="text-gray-500 text-center py-12 text-sm">No cycle count data available.</p>
+              <p className="text-gray-500 text-center py-12 text-sm">
+                No cycle count data available.
+              </p>
             )}
           </ChartCard>
         </div>

@@ -9,7 +9,11 @@
     "prisma:migrate": "prisma migrate deploy",
     "prisma:seed": "node prisma/seed.js",
     "prisma:studio": "prisma studio",
-    "test": "jest --runInBand"
+    "test": "jest --runInBand",
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix",
+    "format": "prettier --write \"src/**/*.js\"",
+    "format:check": "prettier --check \"src/**/*.js\""
   },
   "prisma": {
     "seed": "node prisma/seed.js"
@@ -29,8 +33,12 @@
     "qs": "^6.11.0"
   },
   "devDependencies": {
+    "@eslint/js": "^9.18.0",
+    "eslint": "^9.18.0",
+    "globals": "^15.14.0",
     "jest": "^30.2.0",
     "nodemon": "^3.1.10",
+    "prettier": "^3.4.0",
     "prisma": "^6.5.0",
     "supertest": "^7.2.2"
   }

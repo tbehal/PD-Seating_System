@@ -21,7 +21,11 @@
     "start": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "vitest run"
+    "test": "vitest run",
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix",
+    "format": "prettier --write \"src/**/*.{js,jsx}\"",
+    "format:check": "prettier --check \"src/**/*.{js,jsx}\""
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.9.1",
@@ -31,6 +35,12 @@
     "jsdom": "^28.1.0",
     "postcss": "^8.4.27",
     "tailwindcss": "^3.3.3",
-    "vitest": "^4.0.18"
+    "vitest": "^4.0.18",
+    "eslint": "^9.18.0",
+    "@eslint/js": "^9.18.0",
+    "eslint-plugin-react": "^7.37.0",
+    "eslint-plugin-react-hooks": "^5.1.0",
+    "globals": "^15.14.0",
+    "prettier": "^3.4.0"
   }
 }

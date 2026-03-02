@@ -72,49 +72,66 @@ export default function StudentInfoDialog({ dialog, onUnbook, onClose, locked })
                   )}
                   <div>
                     <span className="font-medium text-blue-800">Payment Status:</span>
-                    <p className={`inline-block ml-2 px-2 py-1 rounded text-xs font-semibold ${
-                      dialog.hubspotContact.paymentStatus?.toLowerCase().includes('paid')
-                        ? 'bg-green-100 text-green-800'
-                        : dialog.hubspotContact.paymentStatus?.toLowerCase().includes('pending')
-                        ? 'bg-yellow-100 text-yellow-800'
-                        : 'bg-gray-100 text-gray-800'
-                    }`}>
+                    <p
+                      className={`inline-block ml-2 px-2 py-1 rounded text-xs font-semibold ${
+                        dialog.hubspotContact.paymentStatus?.toLowerCase().includes('paid')
+                          ? 'bg-green-100 text-green-800'
+                          : dialog.hubspotContact.paymentStatus?.toLowerCase().includes('pending')
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : 'bg-gray-100 text-gray-800'
+                      }`}
+                    >
                       {dialog.hubspotContact.paymentStatus || 'Unknown'}
                     </p>
                   </div>
                   <div>
                     <span className="font-medium text-blue-800">Lifecycle Stage:</span>
-                    <p className="text-blue-700">{dialog.hubspotContact.lifeCycleStage || 'Unknown'}</p>
+                    <p className="text-blue-700">
+                      {dialog.hubspotContact.lifeCycleStage || 'Unknown'}
+                    </p>
                   </div>
                 </div>
 
                 {/* Deals */}
                 {dialog.hubspotContact.deals && dialog.hubspotContact.deals.length > 0 && (
                   <div className="mt-4 pt-4 border-t border-blue-200">
-                    <h5 className="font-semibold text-blue-900 mb-2">Associated Deals ({dialog.hubspotContact.deals.length})</h5>
+                    <h5 className="font-semibold text-blue-900 mb-2">
+                      Associated Deals ({dialog.hubspotContact.deals.length})
+                    </h5>
                     <div className="space-y-2">
                       {dialog.hubspotContact.deals.map((deal, idx) => (
-                        <div key={deal.id || idx} className="bg-white p-3 rounded border border-blue-200">
-                          <div className="font-medium text-gray-900">{deal.properties?.dealname || 'Unnamed Deal'}</div>
+                        <div
+                          key={deal.id || idx}
+                          className="bg-white p-3 rounded border border-blue-200"
+                        >
+                          <div className="font-medium text-gray-900">
+                            {deal.properties?.dealname || 'Unnamed Deal'}
+                          </div>
                           <div className="text-xs text-gray-600 mt-1 space-y-1">
                             {deal.stageName && (
                               <div>
                                 <span className="font-medium">Stage:</span>
-                                <span className={`ml-1 px-2 py-0.5 rounded ${
-                                  deal.stageName.toLowerCase().includes('paid')
-                                    ? 'bg-green-100 text-green-800'
-                                    : 'bg-gray-100 text-gray-700'
-                                }`}>
+                                <span
+                                  className={`ml-1 px-2 py-0.5 rounded ${
+                                    deal.stageName.toLowerCase().includes('paid')
+                                      ? 'bg-green-100 text-green-800'
+                                      : 'bg-gray-100 text-gray-700'
+                                  }`}
+                                >
                                   {deal.stageName}
                                 </span>
                               </div>
                             )}
                             {deal.properties?.amount && (
-                              <div><span className="font-medium">Amount:</span> ${deal.properties.amount}</div>
+                              <div>
+                                <span className="font-medium">Amount:</span> $
+                                {deal.properties.amount}
+                              </div>
                             )}
                             {deal.properties?.closedate && (
                               <div>
-                                <span className="font-medium">Close Date:</span> {new Date(deal.properties.closedate).toLocaleDateString()}
+                                <span className="font-medium">Close Date:</span>{' '}
+                                {new Date(deal.properties.closedate).toLocaleDateString()}
                               </div>
                             )}
                           </div>
@@ -135,11 +152,13 @@ export default function StudentInfoDialog({ dialog, onUnbook, onClose, locked })
             <div className="flex gap-3 pt-4">
               {!locked && (
                 <button
-                  onClick={() => onUnbook({
-                    stationId: dialog.stationId,
-                    shift: dialog.shift,
-                    week: dialog.week,
-                  })}
+                  onClick={() =>
+                    onUnbook({
+                      stationId: dialog.stationId,
+                      shift: dialog.shift,
+                      week: dialog.week,
+                    })
+                  }
                   className="flex-1 py-2 px-4 rounded-md bg-red-600 text-white font-medium hover:bg-red-700 transition-colors"
                 >
                   Remove Student

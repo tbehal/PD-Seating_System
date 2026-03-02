@@ -11,13 +11,13 @@ async function bookSlots({ cycleId, stationId, shift, weeks, traineeName, contac
   });
 
   if (conflicts.length > 0) {
-    const conflictWeeks = conflicts.map(c => `Week ${c.week}`).join(', ');
+    const conflictWeeks = conflicts.map((c) => `Week ${c.week}`).join(', ');
     throw new AppError(409, `Conflict: already booked for ${conflictWeeks}`);
   }
 
   try {
     await prisma.booking.createMany({
-      data: weeks.map(week => ({
+      data: weeks.map((week) => ({
         cycleId,
         stationId,
         shift,
@@ -48,7 +48,15 @@ async function unbookSlots({ cycleId, stationId, shift, weeks }) {
   return { unbooked: weeks.length };
 }
 
-async function findAvailableBlocks({ cycleId, shift, labType, side, startWeek, endWeek, weeksNeeded }) {
+async function findAvailableBlocks({
+  cycleId,
+  shift,
+  labType,
+  side,
+  startWeek,
+  endWeek,
+  weeksNeeded,
+}) {
   const stationWhere = { lab: { labType } };
   if (side !== 'ALL') stationWhere.side = side;
 
@@ -67,7 +75,7 @@ async function findAvailableBlocks({ cycleId, shift, labType, side, startWeek, e
   let idCounter = 0;
 
   for (const station of stations) {
-    const bookedWeeks = new Set(station.bookings.map(b => b.week));
+    const bookedWeeks = new Set(station.bookings.map((b) => b.week));
 
     for (let w = startWeek; w <= endWeek - weeksNeeded + 1; w++) {
       let blockAvailable = true;
