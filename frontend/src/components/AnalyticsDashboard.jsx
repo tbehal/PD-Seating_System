@@ -14,6 +14,8 @@ import {
 } from 'recharts';
 import { fetchSeatingAnalytics, fetchRegistrationAnalytics } from '../api';
 import { toast } from 'sonner';
+import { useNavigate } from 'react-router-dom';
+import { useCycles } from '../hooks/useCycles';
 
 // Brand palette (recharts needs hex strings, not Tailwind classes)
 const BRAND = {
@@ -435,7 +437,9 @@ function CycleCountChart({ data }) {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export default function AnalyticsDashboard({ cycles, onBack }) {
+export default function AnalyticsDashboard() {
+  const { data: cycles = [] } = useCycles();
+  const navigate = useNavigate();
   const currentYear = new Date().getFullYear();
 
   const availableYears = useMemo(() => {
@@ -792,7 +796,7 @@ export default function AnalyticsDashboard({ cycles, onBack }) {
       {/* Header */}
       <div className="flex flex-wrap items-center gap-3">
         <button
-          onClick={onBack}
+          onClick={() => navigate('/schedule')}
           disabled={exporting}
           className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >

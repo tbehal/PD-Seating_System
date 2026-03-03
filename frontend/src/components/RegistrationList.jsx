@@ -1,7 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { fetchRegistrationList, exportRegistrationList } from '../api';
+import { useScheduleStore } from '../stores/scheduleStore';
+import { useCycles, useUpdateCourseCodes } from '../hooks/useCycles';
 
-export default function RegistrationList({ cycleId, cycleName, courseCodes, onUpdateCourseCodes }) {
+export default function RegistrationList() {
+  const cycleId = useScheduleStore((s) => s.activeCycleId);
+  const { data: cycles = [] } = useCycles();
+  const activeCycle = cycles.find((c) => c.id === cycleId);
+  const courseCodes = activeCycle?.courseCodes || [];
+  const updateCourseCodesMutation = useUpdateCourseCodes();
   const [shift, setShift] = useState('AM');
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -64,11 +71,10 @@ export default function RegistrationList({ cycleId, cycleName, courseCodes, onUp
       .map((s) => s.trim())
       .filter(Boolean);
     try {
-      await onUpdateCourseCodes(cycleId, codes);
+      await updateCourseCodesMutation.mutateAsync({ cycleId, courseCodes: codes });
       setShowEditCodes(false);
-      // Reload data with new codes
       setTimeout(() => loadData(true), 300);
-    } catch (err) {
+    } catch {
       setError('Failed to update course codes.');
     }
   };

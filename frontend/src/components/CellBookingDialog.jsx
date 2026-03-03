@@ -1,17 +1,47 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { bookingSchema } from '../schemas/booking';
 import ContactSearch from './ContactSearch';
 
-export default function CellBookingDialog({
-  dialog,
-  cellBookingName,
-  setCellBookingName,
-  selectedContact,
-  onContactSelect,
-  onSubmit,
-  onCancel,
-  isBooking,
-}) {
+export default function CellBookingDialog({ dialog, onSubmit, onCancel, isBooking }) {
+  const [selectedContact, setSelectedContact] = useState(null);
+
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    reset,
+    watch,
+    formState: { errors },
+  } = useForm({
+    resolver: zodResolver(bookingSchema),
+    defaultValues: { traineeName: '', contactId: null },
+  });
+
+  // Reset form when dialog opens/closes
+  useEffect(() => {
+    if (dialog) {
+      reset({ traineeName: '', contactId: null });
+      setSelectedContact(null);
+    }
+  }, [dialog, reset]);
+
   if (!dialog) return null;
+
+  const traineeName = watch('traineeName');
+
+  const handleContactSelect = (contact) => {
+    setSelectedContact(contact);
+    if (contact) {
+      setValue('traineeName', contact.fullName, { shouldValidate: true });
+      setValue('contactId', contact.id);
+    }
+  };
+
+  const onFormSubmit = (data) => {
+    onSubmit({ traineeName: data.traineeName, contactId: data.contactId || selectedContact?.id });
+  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -19,16 +49,11 @@ export default function CellBookingDialog({
         <h3 className="text-xl font-bold text-slate-800 mb-4">
           Book Slot{dialog.weeks.length > 1 ? 's' : ''}
         </h3>
-        <div className="space-y-4">
+        <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Student Search</label>
             <ContactSearch
-              onContactSelect={(contact) => {
-                onContactSelect(contact);
-                if (contact) {
-                  setCellBookingName(contact.fullName);
-                }
-              }}
+              onContactSelect={handleContactSelect}
               selectedContact={selectedContact}
               placeholder="Search by name, email, or student ID..."
             />
@@ -59,12 +84,14 @@ export default function CellBookingDialog({
             <input
               type="text"
               id="cellBookingName"
-              value={cellBookingName}
-              onChange={(e) => setCellBookingName(e.target.value)}
+              {...register('traineeName')}
               className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
               placeholder="Enter trainee name"
               autoFocus
             />
+            {errors.traineeName && (
+              <p className="mt-1 text-sm text-red-600">{errors.traineeName.message}</p>
+            )}
           </div>
           {selectedContact && (
             <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
@@ -76,10 +103,10 @@ export default function CellBookingDialog({
           )}
           <div className="flex gap-3">
             <button
-              onClick={onSubmit}
-              disabled={isBooking || !cellBookingName.trim()}
+              type="submit"
+              disabled={isBooking || !traineeName?.trim()}
               className={`flex-1 py-2 px-4 rounded-md text-white font-medium transition-colors ${
-                isBooking || !cellBookingName.trim()
+                isBooking || !traineeName?.trim()
                   ? 'bg-gray-400 cursor-not-allowed'
                   : 'bg-brand-500 hover:bg-brand-600'
               }`}
@@ -87,6 +114,7 @@ export default function CellBookingDialog({
               {isBooking ? 'Booking...' : 'Book Slot'}
             </button>
             <button
+              type="button"
               onClick={onCancel}
               disabled={isBooking}
               className="flex-1 py-2 px-4 rounded-md bg-gray-200 text-gray-800 font-medium hover:bg-gray-300 transition-colors"
@@ -94,7 +122,7 @@ export default function CellBookingDialog({
               Cancel
             </button>
           </div>
-        </div>
+        </form>
       </div>
     </div>
   );

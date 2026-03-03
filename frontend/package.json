@@ -7,15 +7,21 @@
     "node": ">=20.19.0"
   },
   "dependencies": {
+    "@hookform/resolvers": "^5.2.2",
+    "@tanstack/react-query": "^5.90.21",
     "@vitejs/plugin-react": "^4.7.0",
     "axios": "^1.4.0",
     "html-to-image": "^1.11.13",
     "jspdf": "^4.2.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-hook-form": "^7.71.2",
+    "react-router-dom": "^7.13.1",
     "recharts": "^3.7.0",
     "sonner": "^2.0.7",
-    "vite": "^7.1.1"
+    "vite": "^7.1.1",
+    "zod": "^4.3.6",
+    "zustand": "^5.0.11"
   },
   "scripts": {
     "start": "vite",

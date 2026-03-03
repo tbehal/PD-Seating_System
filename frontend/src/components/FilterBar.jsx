@@ -1,8 +1,11 @@
 import React from 'react';
+import { useScheduleStore } from '../stores/scheduleStore';
 
-export default function FilterBar({ filters, onChange }) {
+export default function FilterBar() {
+  const { filters, setFilter } = useScheduleStore();
+
   const handleChange = (e) => {
-    onChange({ ...filters, [e.target.name]: e.target.value });
+    setFilter(e.target.name, e.target.value);
   };
 
   return (

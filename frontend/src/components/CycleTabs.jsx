@@ -26,8 +26,8 @@ export default function CycleTabs({
       await onCreateCycle(newCycleYear, codes);
       setShowCreateDialog(false);
       setCourseCodesInput('');
-    } catch (err) {
-      console.error('Failed to create cycle:', err);
+    } catch (_) {
+      // Error handled by TanStack Query
     } finally {
       setCreating(false);
     }
@@ -44,8 +44,8 @@ export default function CycleTabs({
     try {
       await onDeleteCycle(deleteConfirm.id);
       setDeleteConfirm(null);
-    } catch (err) {
-      console.error('Failed to delete cycle:', err);
+    } catch (_) {
+      // Error handled by TanStack Query
     } finally {
       setDeleting(false);
     }
