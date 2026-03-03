@@ -83,6 +83,7 @@ export function useUpdateCourseCodes() {
     mutationFn: ({ cycleId, courseCodes }) => updateCourseCodes(cycleId, courseCodes),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cycles'] });
+      queryClient.invalidateQueries({ queryKey: ['registration'] });
     },
   });
 }

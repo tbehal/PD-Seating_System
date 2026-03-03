@@ -11,6 +11,8 @@ import {
 } from '../hooks/useCycles';
 import { checkAuth, logout } from '../api';
 import CycleTabs from './CycleTabs';
+import { DarkModeToggle } from './DarkModeToggle';
+import { Skeleton } from './ui/Skeleton';
 
 export default function AppLayout() {
   const { authenticated, setAuthenticated } = useAuthStore();
@@ -70,8 +72,16 @@ export default function AppLayout() {
 
   if (authenticated === null) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-gray-500 text-lg">Loading...</div>
+      <div className="min-h-screen bg-background p-6">
+        <div className="max-w-7xl mx-auto space-y-4">
+          <Skeleton className="h-16 w-full" />
+          <div className="flex gap-4">
+            <Skeleton className="h-10 w-32" />
+            <Skeleton className="h-10 w-32" />
+            <Skeleton className="h-10 w-32" />
+          </div>
+          <Skeleton className="h-96 w-full" />
+        </div>
       </div>
     );
   }
@@ -83,35 +93,38 @@ export default function AppLayout() {
   const navLinkClass = ({ isActive }) =>
     `px-3 py-1.5 text-sm border rounded-lg transition-colors ${
       isActive
-        ? 'bg-brand-500 text-white border-brand-500'
-        : 'text-gray-600 hover:text-gray-900 border-gray-300 hover:bg-gray-100'
+        ? 'bg-primary text-primary-foreground border-primary'
+        : 'text-muted-foreground hover:text-foreground border-input hover:bg-muted'
     }`;
 
   return (
-    <div className="bg-gray-50 min-h-screen font-sans p-4 sm:p-6 lg:p-8">
+    <div className="bg-background min-h-screen font-sans p-4 sm:p-6 lg:p-8">
       <div className="mx-auto">
         <header className="mb-6 flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight text-gray-900">
+            <h1 className="text-3xl font-bold tracking-tight text-foreground">
               Lab Availability Manager
             </h1>
-            <p className="text-slate-600 mt-1">
+            <p className="text-muted-foreground mt-1">
               Find and book available lab stations for trainees.
             </p>
           </div>
           <div className="flex items-center gap-4">
-            <NavLink to="/schedule" className={navLinkClass}>
-              Schedule
-            </NavLink>
-            <NavLink to="/registration" className={navLinkClass}>
-              Registration
-            </NavLink>
-            <NavLink to="/analytics" className={navLinkClass}>
-              Analytics
-            </NavLink>
+            <nav aria-label="Main navigation" className="flex items-center gap-4">
+              <NavLink to="/schedule" className={navLinkClass}>
+                Schedule
+              </NavLink>
+              <NavLink to="/registration" className={navLinkClass}>
+                Registration
+              </NavLink>
+              <NavLink to="/analytics" className={navLinkClass}>
+                Analytics
+              </NavLink>
+            </nav>
+            <DarkModeToggle />
             <button
               onClick={handleLogout}
-              className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors"
+              className="px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground border border-input rounded-lg hover:bg-muted transition-colors"
             >
               Logout
             </button>
@@ -131,7 +144,9 @@ export default function AppLayout() {
           />
         </div>
 
-        <Outlet />
+        <main>
+          <Outlet />
+        </main>
       </div>
     </div>
   );

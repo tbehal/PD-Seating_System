@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useFocusTrap } from '../hooks/useFocusTrap';
 
 // Format a date string like "2026-01-06" to short format like "Jan 6"
 function formatShortDate(dateStr) {
@@ -38,7 +39,11 @@ export default function AvailabilityGrid({
   const [editingWeek, setEditingWeek] = useState(null);
   const [editStartDate, setEditStartDate] = useState('');
   const [editEndDate, setEditEndDate] = useState('');
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
   const popoverRef = useRef(null);
+  const clearConfirmRef = useRef(null);
+
+  useFocusTrap(clearConfirmRef, showClearConfirm, { onEscape: () => setShowClearConfirm(false) });
 
   // Close popover on outside click
   useEffect(() => {
@@ -71,7 +76,7 @@ export default function AvailabilityGrid({
   // Show empty placeholder when no data yet (after hooks)
   if (!data) {
     return (
-      <div className="bg-white rounded-xl shadow-md border border-gray-200 p-8 text-center text-gray-400">
+      <div className="bg-card rounded-xl shadow-md border border-border p-8 text-center text-muted-foreground/60">
         <p className="text-lg">Select a cycle to view the availability grid</p>
       </div>
     );
@@ -163,31 +168,27 @@ export default function AvailabilityGrid({
 
   return (
     <div
-      className="bg-white rounded-xl shadow-md border border-gray-200"
+      className="bg-card rounded-xl shadow-md border border-border"
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseUp}
     >
-      <div className="p-4 border-b border-gray-200 space-y-3">
+      <div className="p-4 border-b border-border space-y-3">
         <div className="flex justify-between items-center">
-          <h2 className="text-xl font-semibold text-slate-800">
+          <h2 className="text-xl font-semibold text-foreground">
             Availability Grid
-            {locked && <span className="ml-2 text-sm text-amber-600 font-normal">(Read-only)</span>}
+            {locked && <span className="ml-2 text-sm text-warning font-normal">(Read-only)</span>}
           </h2>
           <div className="flex items-center gap-2">
             <button
               onClick={onExport}
-              className="px-4 py-2 bg-brand-500 text-white rounded-md hover:bg-brand-600 transition-colors text-sm font-medium"
+              className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors text-sm font-medium"
             >
               Export CSV
             </button>
             {!locked && (
               <button
-                onClick={() => {
-                  if (confirm('Clear ALL bookings for this cycle? This cannot be undone.')) {
-                    onClearAll();
-                  }
-                }}
-                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors text-sm font-medium"
+                onClick={() => setShowClearConfirm(true)}
+                className="px-4 py-2 bg-destructive text-primary-foreground rounded-md hover:bg-destructive/90 transition-colors text-sm font-medium"
               >
                 Clear All
               </button>
@@ -201,32 +202,32 @@ export default function AvailabilityGrid({
               placeholder="Search for student in grid..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+              className="w-full px-3 py-2 border border-input rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
         </div>
 
         {/* Drag selection toolbar */}
         {selectedCells.length > 0 && !locked && (
-          <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded-md flex items-center justify-between gap-2">
-            <div className="text-sm text-yellow-900">
+          <div className="mt-3 p-2 bg-warning-muted border border-warning/30 rounded-md flex items-center justify-between gap-2">
+            <div className="text-sm text-foreground">
               {selectionMode === 'book' ? 'Selected available weeks' : 'Selected booked weeks'}:{' '}
               {selectedCells.length}
             </div>
             <div className="flex gap-2">
               <button
                 onClick={confirmSelection}
-                className={`px-3 py-1 rounded-md text-white text-sm font-medium ${
+                className={`px-3 py-1 rounded-md text-primary-foreground text-sm font-medium ${
                   selectionMode === 'book'
-                    ? 'bg-brand-500 hover:bg-brand-600'
-                    : 'bg-red-600 hover:bg-red-700'
+                    ? 'bg-primary hover:bg-primary/90'
+                    : 'bg-destructive hover:bg-destructive/90'
                 }`}
               >
                 {selectionMode === 'book' ? 'Book Selected' : 'Clear Selected'}
               </button>
               <button
                 onClick={clearSelection}
-                className="px-3 py-1 rounded-md bg-gray-200 text-gray-800 text-sm font-medium hover:bg-gray-300"
+                className="px-3 py-1 rounded-md bg-secondary text-foreground text-sm font-medium hover:bg-secondary/80"
               >
                 Cancel Selection
               </button>
@@ -235,7 +236,7 @@ export default function AvailabilityGrid({
         )}
 
         {searchQuery && (
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-muted-foreground">
             Found {filteredGrid.length} station(s) with "{searchQuery}"
           </p>
         )}
@@ -249,7 +250,7 @@ export default function AvailabilityGrid({
           <thead>
             <tr>
               <th
-                className="p-2 text-left text-sm font-semibold text-gray-600"
+                className="p-2 text-left text-sm font-semibold text-muted-foreground"
                 style={{ width: '160px' }}
               >
                 Station
@@ -259,27 +260,29 @@ export default function AvailabilityGrid({
                 return (
                   <th
                     key={w}
-                    className={`p-2 text-sm font-semibold text-gray-600 relative ${!locked ? 'cursor-pointer hover:bg-gray-100' : ''}`}
+                    className={`p-2 text-sm font-semibold text-muted-foreground relative ${!locked ? 'cursor-pointer hover:bg-muted' : ''}`}
                     style={{ width: '100px' }}
                     onClick={() => handleWeekHeaderClick(w)}
                     title={!locked ? 'Click to set week dates' : undefined}
                   >
                     <div>{label}</div>
                     {dateRange && (
-                      <div className="text-xs font-normal text-gray-400">{dateRange}</div>
+                      <div className="text-xs font-normal text-muted-foreground/60">
+                        {dateRange}
+                      </div>
                     )}
                     {editingWeek === w && (
                       <div
                         ref={popoverRef}
-                        className="absolute z-50 top-full left-1/2 -translate-x-1/2 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg p-3 w-56"
+                        className="absolute z-50 top-full left-1/2 -translate-x-1/2 mt-1 bg-card border border-input rounded-lg shadow-lg p-3 w-56"
                         onClick={(e) => e.stopPropagation()}
                       >
-                        <div className="text-left text-xs font-semibold text-gray-700 mb-2">
+                        <div className="text-left text-xs font-semibold text-secondary-foreground mb-2">
                           Week {w} Dates
                         </div>
                         <label
                           htmlFor={`week-${w}-start`}
-                          className="block text-left text-xs text-gray-500 mb-1"
+                          className="block text-left text-xs text-muted-foreground mb-1"
                         >
                           Start Date
                         </label>
@@ -288,11 +291,11 @@ export default function AvailabilityGrid({
                           type="date"
                           value={editStartDate}
                           onChange={(e) => setEditStartDate(e.target.value)}
-                          className="w-full px-2 py-1 border border-gray-300 rounded text-sm mb-2 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                          className="w-full px-2 py-1 border border-input rounded text-sm mb-2 focus:outline-none focus:ring-1 focus:ring-ring"
                         />
                         <label
                           htmlFor={`week-${w}-end`}
-                          className="block text-left text-xs text-gray-500 mb-1"
+                          className="block text-left text-xs text-muted-foreground mb-1"
                         >
                           End Date
                         </label>
@@ -301,18 +304,18 @@ export default function AvailabilityGrid({
                           type="date"
                           value={editEndDate}
                           onChange={(e) => setEditEndDate(e.target.value)}
-                          className="w-full px-2 py-1 border border-gray-300 rounded text-sm mb-2 focus:outline-none focus:ring-1 focus:ring-brand-500"
+                          className="w-full px-2 py-1 border border-input rounded text-sm mb-2 focus:outline-none focus:ring-1 focus:ring-ring"
                         />
                         <div className="flex gap-2">
                           <button
                             onClick={handleSaveWeekDates}
-                            className="flex-1 px-2 py-1 bg-brand-500 text-white rounded text-xs font-medium hover:bg-brand-600"
+                            className="flex-1 px-2 py-1 bg-primary text-primary-foreground rounded text-xs font-medium hover:bg-primary/90"
                           >
                             Save
                           </button>
                           <button
                             onClick={() => setEditingWeek(null)}
-                            className="flex-1 px-2 py-1 bg-gray-200 text-gray-700 rounded text-xs font-medium hover:bg-gray-300"
+                            className="flex-1 px-2 py-1 bg-secondary text-secondary-foreground rounded text-xs font-medium hover:bg-secondary/80"
                           >
                             Cancel
                           </button>
@@ -339,15 +342,15 @@ export default function AvailabilityGrid({
                     <tr>
                       <td
                         colSpan={data.weeks.length + 1}
-                        className="p-2 bg-gray-100 text-left text-sm font-bold text-gray-700 border-t-2 border-gray-300"
+                        className="p-2 bg-muted text-left text-sm font-bold text-secondary-foreground border-t-2 border-input"
                       >
                         {row.labName}
                       </td>
                     </tr>
                   )}
-                  <tr className="odd:bg-white even:bg-gray-50">
+                  <tr className="odd:bg-card even:bg-muted/50">
                     <td
-                      className={`p-2 border border-gray-200 font-bold text-left ${isStationMatch ? 'text-brand-600' : 'text-slate-700'}`}
+                      className={`p-2 border border-border font-bold text-left ${isStationMatch ? 'text-primary' : 'text-secondary-foreground'}`}
                     >
                       {row.station}
                     </td>
@@ -364,19 +367,21 @@ export default function AvailabilityGrid({
                       const isTempSelected = isCellSelected(row.stationId, week);
 
                       const baseClasses =
-                        'p-2 border border-gray-200 font-mono text-sm transition-colors duration-200';
+                        'p-2 border border-border font-mono text-sm transition-colors duration-200';
                       let colorClasses = '';
 
                       if (isTempSelected) {
-                        colorClasses = 'bg-yellow-200 border-yellow-400';
+                        colorClasses = 'bg-grid-selected border-grid-selected-border';
                       } else if (isSelected) {
-                        colorClasses = 'bg-brand-500 text-white font-bold';
+                        colorClasses = 'bg-primary text-primary-foreground font-bold';
                       } else if (isAvailable) {
-                        colorClasses = 'bg-green-100 text-green-800 hover:bg-green-200';
+                        colorClasses =
+                          'bg-grid-available text-grid-available-fg hover:bg-success-muted';
                       } else if (isBookedName) {
-                        colorClasses = 'bg-red-100 text-red-800 hover:bg-red-200';
+                        colorClasses =
+                          'bg-grid-booked text-grid-booked-fg hover:bg-destructive-muted';
                       } else {
-                        colorClasses = 'bg-gray-100 text-gray-500';
+                        colorClasses = 'bg-grid-unavailable text-muted-foreground';
                       }
 
                       const clickable =
@@ -418,6 +423,41 @@ export default function AvailabilityGrid({
           </tbody>
         </table>
       </div>
+
+      {showClearConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay/50">
+          <div
+            ref={clearConfirmRef}
+            role="dialog"
+            aria-modal="true"
+            className="bg-card rounded-xl shadow-xl p-6 max-w-md mx-4 border border-border"
+          >
+            <h3 className="text-lg font-semibold text-foreground">Clear All Bookings</h3>
+            <p className="mt-2 text-muted-foreground">
+              This will remove ALL bookings for this cycle. This action cannot be undone.
+            </p>
+            <div className="mt-4 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setShowClearConfirm(false)}
+                className="px-4 py-2 text-sm font-medium rounded-md bg-secondary text-foreground hover:bg-secondary/80"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  onClearAll();
+                  setShowClearConfirm(false);
+                }}
+                className="px-4 py-2 text-sm font-medium rounded-md bg-destructive text-primary-foreground hover:bg-destructive/90"
+              >
+                Clear All
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

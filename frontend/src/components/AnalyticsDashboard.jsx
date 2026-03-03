@@ -12,26 +12,13 @@ import {
   Pie,
   Cell,
 } from 'recharts';
-import { fetchSeatingAnalytics, fetchRegistrationAnalytics } from '../api';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { useCycles } from '../hooks/useCycles';
-
-// Brand palette (recharts needs hex strings, not Tailwind classes)
-const BRAND = {
-  500: '#0660B2',
-  400: '#3d82d6',
-  300: '#6da2e3',
-  200: '#9ec0ed',
-};
-
-const PIE_COLORS = ['#0660B2', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#6b7280'];
-
-const PROGRAM_COLORS = {
-  Roadmap: '#0660B2',
-  AFK: '#10b981',
-  ACJ: '#f59e0b',
-};
+import { useSeatingAnalytics, useRegistrationAnalytics } from '../hooks/useAnalytics';
+import { useThemeStore } from '../stores/themeStore';
+import { getChartColors, getAxisStyle, getProgramColors } from '../lib/chartTheme';
+import { Skeleton } from './ui/Skeleton';
 
 // ─── PDF export config ───────────────────────────────────────────────────────
 const PDF_SCALE = 1.5;
@@ -47,19 +34,11 @@ const ORDINAL_SUFFIX = (n) => {
 
 // ─── Skeleton primitives ──────────────────────────────────────────────────────
 
-function SkeletonBlock({ className = '' }) {
-  return <div className={`animate-pulse bg-gray-200 rounded ${className}`} />;
-}
-
 function SkeletonChart() {
   return (
     <div className="h-[300px] flex items-end gap-3 px-2 pt-4">
       {[60, 85, 45, 70, 55, 90, 40].map((h, i) => (
-        <div
-          key={i}
-          className="animate-pulse bg-gray-200 rounded flex-1"
-          style={{ height: `${h}%` }}
-        />
+        <Skeleton key={i} className="flex-1" style={{ height: `${h}%` }} />
       ))}
     </div>
   );
@@ -68,15 +47,15 @@ function SkeletonChart() {
 // ─── Error message ────────────────────────────────────────────────────────────
 
 function ErrorMsg({ msg }) {
-  return <div className="bg-red-50 text-red-700 rounded-lg p-3 text-sm">{msg}</div>;
+  return <div className="bg-destructive/10 text-destructive rounded-lg p-3 text-sm">{msg}</div>;
 }
 
 // ─── ChartCard wrapper ────────────────────────────────────────────────────────
 
 function ChartCard({ title, children, loading, error }) {
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-      <h3 className="text-base font-semibold text-gray-800 mb-4">{title}</h3>
+    <div className="bg-card rounded-xl shadow-sm border border-border p-5">
+      <h3 className="text-base font-semibold text-foreground mb-4">{title}</h3>
       {loading ? <SkeletonChart /> : error ? <ErrorMsg msg={error} /> : children}
     </div>
   );
@@ -86,12 +65,12 @@ function ChartCard({ title, children, loading, error }) {
 
 function SummaryCard({ label, value, loading }) {
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-      <p className="text-sm font-medium text-slate-500">{label}</p>
+    <div className="bg-card rounded-xl shadow-sm border border-border p-5">
+      <p className="text-sm font-medium text-muted-foreground">{label}</p>
       {loading ? (
-        <SkeletonBlock className="h-9 mt-2 w-24" />
+        <Skeleton className="h-9 mt-2 w-24" />
       ) : (
-        <p className="text-3xl font-bold text-gray-900 mt-1">{value ?? '—'}</p>
+        <p className="text-3xl font-bold text-foreground mt-1">{value ?? '—'}</p>
       )}
     </div>
   );
@@ -143,7 +122,7 @@ function MultiSelectFilter({
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen(!open)}
-        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-gray-300 rounded-lg bg-white text-gray-700 hover:bg-gray-50 transition-colors"
+        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium border border-input rounded-lg bg-card text-secondary-foreground hover:bg-muted transition-colors"
       >
         {displayText}
         <svg
@@ -156,26 +135,26 @@ function MultiSelectFilter({
         </svg>
       </button>
       {open && (
-        <div className="absolute z-10 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg py-1 max-h-60 overflow-y-auto">
-          <label className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50 cursor-pointer text-xs font-medium text-gray-800 border-b border-gray-100 mb-1">
+        <div className="absolute z-10 mt-1 w-48 bg-card border border-border rounded-lg shadow-lg py-1 max-h-60 overflow-y-auto">
+          <label className="flex items-center gap-2 px-3 py-1.5 hover:bg-muted cursor-pointer text-xs font-medium text-foreground border-b border-border/50 mb-1">
             <input
               type="checkbox"
               checked={allSelected}
               onChange={toggleAll}
-              className="rounded border-gray-300 text-brand-500 focus:ring-brand-500"
+              className="rounded border-input text-primary focus:ring-ring"
             />
             Select All
           </label>
           {options.map((opt) => (
             <label
               key={opt}
-              className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50 cursor-pointer text-xs text-gray-700"
+              className="flex items-center gap-2 px-3 py-1.5 hover:bg-muted cursor-pointer text-xs text-secondary-foreground"
             >
               <input
                 type="checkbox"
                 checked={selected.includes(opt)}
                 onChange={() => toggle(opt)}
-                className="rounded border-gray-300 text-brand-500 focus:ring-brand-500"
+                className="rounded border-input text-primary focus:ring-ring"
               />
               {formatOption(opt)}
             </label>
@@ -189,6 +168,9 @@ function MultiSelectFilter({
 // ─── Week Occupancy chart ─────────────────────────────────────────────────────
 
 function WeekOccupancyChart({ data }) {
+  const chartColors = getChartColors();
+  const axisStyle = getAxisStyle();
+
   const formatted = (data || []).map((d) => ({
     ...d,
     label: `Wk ${d.week}`,
@@ -197,32 +179,37 @@ function WeekOccupancyChart({ data }) {
   return (
     <ResponsiveContainer width="100%" height={300}>
       <BarChart data={formatted} margin={{ top: 4, right: 16, left: 0, bottom: 4 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-        <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#6b7280' }} />
+        <CartesianGrid strokeDasharray="3 3" stroke={axisStyle.gridStroke} />
+        <XAxis dataKey="label" tick={{ fontSize: 11, fill: axisStyle.tick.fill }} />
         <YAxis
           domain={[0, 100]}
           tickFormatter={(v) => `${v}%`}
-          tick={{ fontSize: 11, fill: '#6b7280' }}
+          tick={{ fontSize: 11, fill: axisStyle.tick.fill }}
           width={42}
         />
         <Tooltip
-          content={({ active, payload, label }) => {
+          content={({ active, payload }) => {
             if (!active || !payload?.length) return null;
             const d = payload[0]?.payload;
             return (
-              <div className="bg-white border border-gray-200 rounded-lg shadow-md p-3 text-sm">
-                <p className="font-semibold text-gray-800 mb-1">{`Week ${d?.week}`}</p>
-                <p className="text-xs text-gray-600">
+              <div className="bg-card border border-border rounded-lg shadow-md p-3 text-sm">
+                <p className="font-semibold text-foreground mb-1">{`Week ${d?.week}`}</p>
+                <p className="text-xs text-muted-foreground">
                   Booked: {d?.booked} / {d?.totalSlots}
                 </p>
-                <p className="text-xs" style={{ color: BRAND[500] }}>
+                <p className="text-xs" style={{ color: chartColors.primary }}>
                   Occupancy: {d?.percent?.toFixed(1)}%
                 </p>
               </div>
             );
           }}
         />
-        <Bar dataKey="percent" name="Occupancy %" fill={BRAND[500]} radius={[3, 3, 0, 0]} />
+        <Bar
+          dataKey="percent"
+          name="Occupancy %"
+          fill={chartColors.primary}
+          radius={[3, 3, 0, 0]}
+        />
       </BarChart>
     </ResponsiveContainer>
   );
@@ -231,15 +218,18 @@ function WeekOccupancyChart({ data }) {
 // ─── Lab Occupancy chart ──────────────────────────────────────────────────────
 
 function LabOccupancyChart({ data }) {
+  const chartColors = getChartColors();
+  const axisStyle = getAxisStyle();
+
   return (
     <ResponsiveContainer width="100%" height={300}>
       <BarChart data={data || []} margin={{ top: 4, right: 16, left: 0, bottom: 4 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-        <XAxis dataKey="lab" tick={{ fontSize: 11, fill: '#6b7280' }} />
+        <CartesianGrid strokeDasharray="3 3" stroke={axisStyle.gridStroke} />
+        <XAxis dataKey="lab" tick={{ fontSize: 11, fill: axisStyle.tick.fill }} />
         <YAxis
           domain={[0, 100]}
           tickFormatter={(v) => `${v}%`}
-          tick={{ fontSize: 11, fill: '#6b7280' }}
+          tick={{ fontSize: 11, fill: axisStyle.tick.fill }}
           width={42}
         />
         <Tooltip
@@ -247,19 +237,24 @@ function LabOccupancyChart({ data }) {
             if (!active || !payload?.length) return null;
             const d = payload[0]?.payload;
             return (
-              <div className="bg-white border border-gray-200 rounded-lg shadow-md p-3 text-sm">
-                <p className="font-semibold text-gray-800 mb-1">{d?.lab}</p>
-                <p className="text-xs text-gray-600">
+              <div className="bg-card border border-border rounded-lg shadow-md p-3 text-sm">
+                <p className="font-semibold text-foreground mb-1">{d?.lab}</p>
+                <p className="text-xs text-muted-foreground">
                   Booked: {d?.booked} / {d?.totalSlots}
                 </p>
-                <p className="text-xs" style={{ color: BRAND[400] }}>
+                <p className="text-xs" style={{ color: chartColors.secondary }}>
                   Occupancy: {d?.percent?.toFixed(1)}%
                 </p>
               </div>
             );
           }}
         />
-        <Bar dataKey="percent" name="Occupancy %" fill={BRAND[400]} radius={[3, 3, 0, 0]} />
+        <Bar
+          dataKey="percent"
+          name="Occupancy %"
+          fill={chartColors.secondary}
+          radius={[3, 3, 0, 0]}
+        />
       </BarChart>
     </ResponsiveContainer>
   );
@@ -268,16 +263,19 @@ function LabOccupancyChart({ data }) {
 // ─── Shift Comparison chart ───────────────────────────────────────────────────
 
 function ShiftComparisonChart({ data }) {
-  const colorMap = { AM: BRAND[500], PM: BRAND[300] };
+  const chartColors = getChartColors();
+  const axisStyle = getAxisStyle();
+  const colorMap = { AM: chartColors.primary, PM: chartColors.tertiary };
+
   return (
     <ResponsiveContainer width="100%" height={220}>
       <BarChart data={data || []} margin={{ top: 4, right: 24, left: 0, bottom: 4 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-        <XAxis dataKey="shift" tick={{ fontSize: 12, fill: '#6b7280' }} />
+        <CartesianGrid strokeDasharray="3 3" stroke={axisStyle.gridStroke} />
+        <XAxis dataKey="shift" tick={{ fontSize: 12, fill: axisStyle.tick.fill }} />
         <YAxis
           domain={[0, 100]}
           tickFormatter={(v) => `${v}%`}
-          tick={{ fontSize: 11, fill: '#6b7280' }}
+          tick={{ fontSize: 11, fill: axisStyle.tick.fill }}
           width={42}
         />
         <Tooltip
@@ -285,12 +283,12 @@ function ShiftComparisonChart({ data }) {
             if (!active || !payload?.length) return null;
             const d = payload[0]?.payload;
             return (
-              <div className="bg-white border border-gray-200 rounded-lg shadow-md p-3 text-sm">
-                <p className="font-semibold text-gray-800 mb-1">{d?.shift} Shift</p>
-                <p className="text-xs text-gray-600">
+              <div className="bg-card border border-border rounded-lg shadow-md p-3 text-sm">
+                <p className="font-semibold text-foreground mb-1">{d?.shift} Shift</p>
+                <p className="text-xs text-muted-foreground">
                   Booked: {d?.booked} / {d?.totalSlots}
                 </p>
-                <p className="text-xs" style={{ color: colorMap[d?.shift] || BRAND[500] }}>
+                <p className="text-xs" style={{ color: colorMap[d?.shift] || chartColors.primary }}>
                   Occupancy: {d?.percent?.toFixed(1)}%
                 </p>
               </div>
@@ -299,7 +297,7 @@ function ShiftComparisonChart({ data }) {
         />
         <Bar dataKey="percent" name="Occupancy %" radius={[3, 3, 0, 0]}>
           {(data || []).map((entry, i) => (
-            <Cell key={i} fill={colorMap[entry.shift] || BRAND[500]} />
+            <Cell key={i} fill={colorMap[entry.shift] || chartColors.primary} />
           ))}
         </Bar>
       </BarChart>
@@ -310,6 +308,17 @@ function ShiftComparisonChart({ data }) {
 // ─── Payment Status pie ───────────────────────────────────────────────────────
 
 function PaymentPieChart({ data }) {
+  const chartColors = getChartColors();
+  const pieColors = [
+    chartColors.primary,
+    chartColors.success,
+    chartColors.warning,
+    chartColors.danger,
+    chartColors.purple,
+    chartColors.muted,
+  ];
+  const axisStyle = getAxisStyle();
+
   const renderCustomLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, name, count }) => {
     const RADIAN = Math.PI / 180;
     const radius = innerRadius + (outerRadius - innerRadius) * 1.35;
@@ -319,7 +328,7 @@ function PaymentPieChart({ data }) {
       <text
         x={x}
         y={y}
-        fill="#374151"
+        fill={axisStyle.tick.fill}
         textAnchor={x > cx ? 'start' : 'end'}
         dominantBaseline="central"
         fontSize={11}
@@ -343,7 +352,7 @@ function PaymentPieChart({ data }) {
           label={renderCustomLabel}
         >
           {(data || []).map((_, i) => (
-            <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+            <Cell key={i} fill={pieColors[i % pieColors.length]} />
           ))}
         </Pie>
         <Tooltip
@@ -351,15 +360,17 @@ function PaymentPieChart({ data }) {
             if (!active || !payload?.length) return null;
             const d = payload[0]?.payload;
             return (
-              <div className="bg-white border border-gray-200 rounded-lg shadow-md p-3 text-sm">
-                <p className="font-semibold text-gray-800">{d?.status}</p>
-                <p className="text-xs text-gray-600">Count: {d?.count}</p>
+              <div className="bg-card border border-border rounded-lg shadow-md p-3 text-sm">
+                <p className="font-semibold text-foreground">{d?.status}</p>
+                <p className="text-xs text-muted-foreground">Count: {d?.count}</p>
               </div>
             );
           }}
         />
         <Legend
-          formatter={(value) => <span style={{ fontSize: 11, color: '#6b7280' }}>{value}</span>}
+          formatter={(value) => (
+            <span style={{ fontSize: 11, color: axisStyle.tick.fill }}>{value}</span>
+          )}
         />
       </PieChart>
     </ResponsiveContainer>
@@ -369,6 +380,15 @@ function PaymentPieChart({ data }) {
 // ─── Program Participation horizontal bar ──────────────────────────────────────
 
 function ProgramChart({ data }) {
+  const chartColors = getChartColors();
+  const axisStyle = getAxisStyle();
+  const programColors = getProgramColors();
+  const nameToColor = {
+    Roadmap: programColors.roadmap,
+    AFK: programColors.afk,
+    ACJ: programColors.acj,
+  };
+
   return (
     <ResponsiveContainer width="100%" height={300}>
       <BarChart
@@ -376,24 +396,29 @@ function ProgramChart({ data }) {
         layout="vertical"
         margin={{ top: 4, right: 32, left: 16, bottom: 4 }}
       >
-        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={false} />
-        <XAxis type="number" tick={{ fontSize: 11, fill: '#6b7280' }} />
-        <YAxis dataKey="name" type="category" width={70} tick={{ fontSize: 12, fill: '#374151' }} />
+        <CartesianGrid strokeDasharray="3 3" stroke={axisStyle.gridStroke} horizontal={false} />
+        <XAxis type="number" tick={{ fontSize: 11, fill: axisStyle.tick.fill }} />
+        <YAxis
+          dataKey="name"
+          type="category"
+          width={70}
+          tick={{ fontSize: 12, fill: axisStyle.tick.fill }}
+        />
         <Tooltip
           content={({ active, payload }) => {
             if (!active || !payload?.length) return null;
             const d = payload[0]?.payload;
             return (
-              <div className="bg-white border border-gray-200 rounded-lg shadow-md p-3 text-sm">
-                <p className="font-semibold text-gray-800">{d?.name}</p>
-                <p className="text-xs text-gray-600">Students: {d?.count}</p>
+              <div className="bg-card border border-border rounded-lg shadow-md p-3 text-sm">
+                <p className="font-semibold text-foreground">{d?.name}</p>
+                <p className="text-xs text-muted-foreground">Students: {d?.count}</p>
               </div>
             );
           }}
         />
         <Bar dataKey="count" name="Students" radius={[0, 3, 3, 0]}>
           {(data || []).map((entry, i) => (
-            <Cell key={i} fill={PROGRAM_COLORS[entry.name] || BRAND[300]} />
+            <Cell key={i} fill={nameToColor[entry.name] || chartColors.tertiary} />
           ))}
         </Bar>
       </BarChart>
@@ -404,6 +429,9 @@ function ProgramChart({ data }) {
 // ─── Cycle Count Distribution chart ──────────────────────────────────────────
 
 function CycleCountChart({ data }) {
+  const chartColors = getChartColors();
+  const axisStyle = getAxisStyle();
+
   const formatted = (data || []).map((d) => ({
     ...d,
     label: ORDINAL_SUFFIX(d.cycleNumber),
@@ -412,24 +440,28 @@ function CycleCountChart({ data }) {
   return (
     <ResponsiveContainer width="100%" height={240}>
       <BarChart data={formatted} margin={{ top: 4, right: 24, left: 0, bottom: 4 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-        <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#6b7280' }} />
-        <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: '#6b7280' }} width={36} />
+        <CartesianGrid strokeDasharray="3 3" stroke={axisStyle.gridStroke} />
+        <XAxis dataKey="label" tick={{ fontSize: 11, fill: axisStyle.tick.fill }} />
+        <YAxis
+          allowDecimals={false}
+          tick={{ fontSize: 11, fill: axisStyle.tick.fill }}
+          width={36}
+        />
         <Tooltip
           content={({ active, payload }) => {
             if (!active || !payload?.length) return null;
             const d = payload[0]?.payload;
             return (
-              <div className="bg-white border border-gray-200 rounded-lg shadow-md p-3 text-sm">
-                <p className="font-semibold text-gray-800">
+              <div className="bg-card border border-border rounded-lg shadow-md p-3 text-sm">
+                <p className="font-semibold text-foreground">
                   {ORDINAL_SUFFIX(d?.cycleNumber)} Cycle
                 </p>
-                <p className="text-xs text-gray-600">Students: {d?.count}</p>
+                <p className="text-xs text-muted-foreground">Students: {d?.count}</p>
               </div>
             );
           }}
         />
-        <Bar dataKey="count" name="Students" fill={BRAND[300]} radius={[3, 3, 0, 0]} />
+        <Bar dataKey="count" name="Students" fill={chartColors.tertiary} radius={[3, 3, 0, 0]} />
       </BarChart>
     </ResponsiveContainer>
   );
@@ -440,6 +472,7 @@ function CycleCountChart({ data }) {
 export default function AnalyticsDashboard() {
   const { data: cycles = [] } = useCycles();
   const navigate = useNavigate();
+  const _theme = useThemeStore((s) => s.theme);
   const currentYear = new Date().getFullYear();
 
   const availableYears = useMemo(() => {
@@ -451,13 +484,6 @@ export default function AnalyticsDashboard() {
   const [selectedCycleId, setSelectedCycleId] = useState(null);
   const [shift, setShift] = useState('BOTH');
 
-  const [seatingData, setSeatingData] = useState(null);
-  const [registrationData, setRegistrationData] = useState(null);
-  const [seatingLoading, setSeatingLoading] = useState(false);
-  const [registrationLoading, setRegistrationLoading] = useState(false);
-  const [seatingError, setSeatingError] = useState(null);
-  const [registrationError, setRegistrationError] = useState(null);
-
   const printRef = useRef(null);
   const exportCancelledRef = useRef(false);
   const [exporting, setExporting] = useState(false);
@@ -467,83 +493,42 @@ export default function AnalyticsDashboard() {
     [cycles, selectedYear],
   );
 
+  const noCyclesForYear = cyclesForYear.length === 0;
+
   // Reset cycle selection when year changes
   useEffect(() => {
     setSelectedCycleId(null);
   }, [selectedYear]);
 
-  // Fetch seating analytics
-  useEffect(() => {
-    if (cyclesForYear.length === 0) {
-      setSeatingData(null);
-      setSeatingLoading(false);
-      setSeatingError(null);
-      return;
-    }
+  const {
+    data: seatingData,
+    isLoading: seatingLoading,
+    error: seatingQueryError,
+  } = useSeatingAnalytics(noCyclesForYear ? null : selectedYear, selectedCycleId || null);
 
-    let cancelled = false;
-    setSeatingLoading(true);
-    setSeatingError(null);
+  const {
+    data: registrationData,
+    isLoading: registrationLoading,
+    error: registrationQueryError,
+  } = useRegistrationAnalytics(
+    noCyclesForYear ? null : selectedYear,
+    shift,
+    selectedCycleId || null,
+  );
 
-    fetchSeatingAnalytics(selectedYear, selectedCycleId || null)
-      .then((data) => {
-        if (!cancelled) setSeatingData(data);
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          setSeatingError(
-            err.response?.data?.error || err.message || 'Failed to load seating data.',
-          );
-          setSeatingData(null);
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setSeatingLoading(false);
-      });
+  const seatingError = seatingQueryError
+    ? seatingQueryError.response?.data?.error ||
+      seatingQueryError.message ||
+      'Failed to load seating data.'
+    : null;
 
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedYear, selectedCycleId, cyclesForYear]);
-
-  // Fetch registration analytics
-  useEffect(() => {
-    if (cyclesForYear.length === 0) {
-      setRegistrationData(null);
-      setRegistrationLoading(false);
-      setRegistrationError(null);
-      return;
-    }
-
-    let cancelled = false;
-    setRegistrationLoading(true);
-    setRegistrationError(null);
-
-    fetchRegistrationAnalytics(selectedYear, shift, selectedCycleId || null)
-      .then((data) => {
-        if (!cancelled) setRegistrationData(data);
-      })
-      .catch((err) => {
-        if (!cancelled) {
-          const status = err.response?.status;
-          if (status === 503) {
-            setRegistrationError('HubSpot not configured. Registration analytics unavailable.');
-          } else {
-            setRegistrationError(
-              err.response?.data?.error || err.message || 'Failed to load registration data.',
-            );
-          }
-          setRegistrationData(null);
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setRegistrationLoading(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [selectedYear, selectedCycleId, shift, cyclesForYear]);
+  const registrationError = registrationQueryError
+    ? registrationQueryError.response?.status === 503
+      ? 'HubSpot not configured. Registration analytics unavailable.'
+      : registrationQueryError.response?.data?.error ||
+        registrationQueryError.message ||
+        'Failed to load registration data.'
+    : null;
 
   useEffect(() => {
     if (!exporting) return;
@@ -641,8 +626,6 @@ export default function AnalyticsDashboard() {
     ];
   }, [registrationData?.programCounts]);
 
-  const noCyclesForYear = cyclesForYear.length === 0;
-
   const handleExportPDF = async () => {
     if (!printRef.current) return;
 
@@ -701,46 +684,56 @@ export default function AnalyticsDashboard() {
         el.style.display = 'none';
       });
 
+      // ── Temporarily switch to light mode so CSS vars resolve to light values ──
+      const root = document.documentElement;
+      const wasDark = root.classList.contains('dark');
+      if (wasDark) root.classList.remove('dark');
+
       // ── Capture each section individually (smart page breaks) ──
       const sections = Array.from(printRef.current.children);
       let currentY = contentStartY;
       let isFirstPage = true;
 
-      for (const section of sections) {
-        if (exportCancelledRef.current) break;
+      try {
+        for (const section of sections) {
+          if (exportCancelledRef.current) break;
 
-        const canvas = await toCanvas(section, {
-          pixelRatio: PDF_SCALE,
-          backgroundColor: '#ffffff',
-        });
+          const canvas = await toCanvas(section, {
+            pixelRatio: PDF_SCALE,
+            backgroundColor: '#ffffff',
+          });
 
-        if (exportCancelledRef.current) {
+          if (exportCancelledRef.current) {
+            canvas.width = 0;
+            canvas.height = 0;
+            break;
+          }
+
+          const imgData = canvas.toDataURL('image/png');
+          const ratio = contentWidth / canvas.width;
+          const scaledHeight = canvas.height * ratio;
+
+          const pageBottom = pdfHeight - PDF_MARGIN_MM;
+          const availableOnPage = pageBottom - currentY;
+
+          // Start new page if section doesn't fit and we're not at the top
+          const pageTop = isFirstPage ? contentStartY : PDF_MARGIN_MM;
+          if (scaledHeight > availableOnPage && currentY > pageTop + 1) {
+            pdf.addPage();
+            currentY = PDF_MARGIN_MM;
+            isFirstPage = false;
+          }
+
+          pdf.addImage(imgData, 'PNG', PDF_MARGIN_MM, currentY, contentWidth, scaledHeight);
+          currentY += scaledHeight + PDF_SECTION_GAP_MM;
+
+          // Release GPU-backed canvas memory
           canvas.width = 0;
           canvas.height = 0;
-          break;
         }
-
-        const imgData = canvas.toDataURL('image/png');
-        const ratio = contentWidth / canvas.width;
-        const scaledHeight = canvas.height * ratio;
-
-        const pageBottom = pdfHeight - PDF_MARGIN_MM;
-        const availableOnPage = pageBottom - currentY;
-
-        // Start new page if section doesn't fit and we're not at the top
-        const pageTop = isFirstPage ? contentStartY : PDF_MARGIN_MM;
-        if (scaledHeight > availableOnPage && currentY > pageTop + 1) {
-          pdf.addPage();
-          currentY = PDF_MARGIN_MM;
-          isFirstPage = false;
-        }
-
-        pdf.addImage(imgData, 'PNG', PDF_MARGIN_MM, currentY, contentWidth, scaledHeight);
-        currentY += scaledHeight + PDF_SECTION_GAP_MM;
-
-        // Release GPU-backed canvas memory
-        canvas.width = 0;
-        canvas.height = 0;
+      } finally {
+        // ── Restore dark mode after capture ──
+        if (wasDark) root.classList.add('dark');
       }
 
       if (!exportCancelledRef.current) {
@@ -751,8 +744,7 @@ export default function AnalyticsDashboard() {
         pdf.save(`analytics-report-${selectedYear || 'all'}${cycleSuffix}-${timestamp}.pdf`);
         toast.success('PDF exported successfully');
       }
-    } catch (err) {
-      console.error('PDF export failed:', err);
+    } catch {
       toast.error('PDF export failed. Please try again.');
     } finally {
       hiddenElements.forEach((el) => {
@@ -765,10 +757,10 @@ export default function AnalyticsDashboard() {
   return (
     <div className="space-y-6">
       {exporting && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/70 backdrop-blur-md">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/70 backdrop-blur-md">
           <div className="flex flex-col items-center gap-3">
             <svg
-              className="animate-spin h-8 w-8 text-brand-500"
+              className="animate-spin h-8 w-8 text-primary"
               xmlns="http://www.w3.org/2000/svg"
               fill="none"
               viewBox="0 0 24 24"
@@ -787,8 +779,8 @@ export default function AnalyticsDashboard() {
                 d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
               ></path>
             </svg>
-            <p className="text-sm font-medium text-gray-700">Generating PDF...</p>
-            <p className="text-xs text-gray-400">Press Esc to cancel</p>
+            <p className="text-sm font-medium text-secondary-foreground">Generating PDF...</p>
+            <p className="text-xs text-muted-foreground/60">Press Esc to cancel</p>
           </div>
         </div>
       )}
@@ -798,7 +790,7 @@ export default function AnalyticsDashboard() {
         <button
           onClick={() => navigate('/schedule')}
           disabled={exporting}
-          className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-secondary-foreground bg-card border border-input rounded-lg hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
@@ -811,7 +803,7 @@ export default function AnalyticsDashboard() {
           Back
         </button>
 
-        <h2 className="text-2xl font-bold text-gray-900 flex-1">Analytics Dashboard</h2>
+        <h2 className="text-2xl font-bold text-foreground flex-1">Analytics Dashboard</h2>
 
         <div className="flex items-center gap-2">
           {/* Year filter */}
@@ -819,7 +811,7 @@ export default function AnalyticsDashboard() {
             value={selectedYear}
             onChange={(e) => setSelectedYear(Number(e.target.value))}
             disabled={exporting}
-            className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-3 py-2 text-sm border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring bg-card text-secondary-foreground disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {availableYears.map((y) => (
               <option key={y} value={y}>
@@ -833,7 +825,7 @@ export default function AnalyticsDashboard() {
             value={selectedCycleId ?? ''}
             onChange={(e) => setSelectedCycleId(e.target.value ? Number(e.target.value) : null)}
             disabled={exporting}
-            className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 bg-white text-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-3 py-2 text-sm border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring bg-card text-secondary-foreground disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <option value="">All Cycles</option>
             {cyclesForYear.map((c) => (
@@ -847,7 +839,7 @@ export default function AnalyticsDashboard() {
           <button
             onClick={handleExportPDF}
             disabled={exporting || seatingLoading || registrationLoading || noCyclesForYear}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-brand-500 text-white rounded-lg hover:bg-brand-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium"
           >
             {exporting ? (
               <>
@@ -898,7 +890,7 @@ export default function AnalyticsDashboard() {
 
       {/* No data for year — or all charts/cards */}
       {noCyclesForYear ? (
-        <div className="text-gray-500 text-center py-12">
+        <div className="text-muted-foreground text-center py-12">
           No data available for selected filters.
         </div>
       ) : (
@@ -935,7 +927,7 @@ export default function AnalyticsDashboard() {
               {seatingData?.weekOccupancy?.length ? (
                 <>
                   <div className="flex items-center gap-2 -mt-2 mb-3" data-pdf-hide>
-                    <span className="text-xs text-gray-500">Filter by labs:</span>
+                    <span className="text-xs text-muted-foreground">Filter by labs:</span>
                     <MultiSelectFilter
                       label="Labs"
                       options={labNames}
@@ -946,7 +938,9 @@ export default function AnalyticsDashboard() {
                   <WeekOccupancyChart data={filteredWeekOccupancy} />
                 </>
               ) : (
-                <p className="text-gray-500 text-center py-12 text-sm">No weekly data available.</p>
+                <p className="text-muted-foreground text-center py-12 text-sm">
+                  No weekly data available.
+                </p>
               )}
             </ChartCard>
 
@@ -954,7 +948,7 @@ export default function AnalyticsDashboard() {
               {seatingData?.labOccupancy?.length ? (
                 <>
                   <div className="flex items-center gap-2 -mt-2 mb-3" data-pdf-hide>
-                    <span className="text-xs text-gray-500">Filter by weeks:</span>
+                    <span className="text-xs text-muted-foreground">Filter by weeks:</span>
                     <MultiSelectFilter
                       label="Weeks"
                       options={weekNumbers}
@@ -966,7 +960,9 @@ export default function AnalyticsDashboard() {
                   <LabOccupancyChart data={filteredLabOccupancy} />
                 </>
               ) : (
-                <p className="text-gray-500 text-center py-12 text-sm">No lab data available.</p>
+                <p className="text-muted-foreground text-center py-12 text-sm">
+                  No lab data available.
+                </p>
               )}
             </ChartCard>
           </div>
@@ -976,23 +972,25 @@ export default function AnalyticsDashboard() {
             {seatingData?.shiftOccupancy?.length ? (
               <ShiftComparisonChart data={seatingData.shiftOccupancy} />
             ) : (
-              <p className="text-gray-500 text-center py-12 text-sm">No shift data available.</p>
+              <p className="text-muted-foreground text-center py-12 text-sm">
+                No shift data available.
+              </p>
             )}
           </ChartCard>
 
           {/* Registration section (header + charts wrapped for PDF capture) */}
           <div className="space-y-6">
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-gray-900">Registration Analytics</h3>
-              <div className="flex gap-1 bg-gray-100 p-1 rounded-lg" data-pdf-hide>
+              <h3 className="text-lg font-semibold text-foreground">Registration Analytics</h3>
+              <div className="flex gap-1 bg-muted p-1 rounded-lg" data-pdf-hide>
                 {['AM', 'PM', 'BOTH'].map((s) => (
                   <button
                     key={s}
                     onClick={() => setShift(s)}
                     className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
                       shift === s
-                        ? 'bg-white text-brand-700 shadow-sm'
-                        : 'text-gray-600 hover:text-gray-800'
+                        ? 'bg-card text-primary shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground'
                     }`}
                   >
                     {s === 'BOTH' ? 'Both' : s}
@@ -1010,7 +1008,7 @@ export default function AnalyticsDashboard() {
                 {registrationData?.paymentDistribution?.length ? (
                   <PaymentPieChart data={registrationData.paymentDistribution} />
                 ) : (
-                  <p className="text-gray-500 text-center py-12 text-sm">
+                  <p className="text-muted-foreground text-center py-12 text-sm">
                     No payment data available.
                   </p>
                 )}
@@ -1024,7 +1022,7 @@ export default function AnalyticsDashboard() {
                 {programCounts.some((p) => p.count > 0) ? (
                   <ProgramChart data={programCounts} />
                 ) : (
-                  <p className="text-gray-500 text-center py-12 text-sm">
+                  <p className="text-muted-foreground text-center py-12 text-sm">
                     No program data available.
                   </p>
                 )}
@@ -1041,7 +1039,7 @@ export default function AnalyticsDashboard() {
             {registrationData?.cycleCountDistribution?.length ? (
               <CycleCountChart data={registrationData.cycleCountDistribution} />
             ) : (
-              <p className="text-gray-500 text-center py-12 text-sm">
+              <p className="text-muted-foreground text-center py-12 text-sm">
                 No cycle count data available.
               </p>
             )}

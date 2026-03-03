@@ -9,15 +9,15 @@ export default function SearchResults({
   onToggleCollapse,
 }) {
   return (
-    <div className="bg-white rounded-xl shadow-md border border-gray-200">
+    <div className="bg-card rounded-xl shadow-md border border-border">
       <div
-        className="flex justify-between items-center p-4 border-b border-gray-200 cursor-pointer"
+        className="flex justify-between items-center p-4 border-b border-border cursor-pointer"
         onClick={onToggleCollapse}
       >
-        <h2 className="text-xl font-semibold text-slate-800">
+        <h2 className="text-xl font-semibold text-foreground">
           Ranked Lab Availabilities ({results.length})
         </h2>
-        <button className="text-gray-500 hover:text-gray-700">
+        <button className="text-muted-foreground hover:text-secondary-foreground">
           {isCollapsed ? '\u25BC' : '\u25B2'}
         </button>
       </div>
@@ -31,19 +31,19 @@ export default function SearchResults({
                   onClick={() => onSelect(combo)}
                   className={`w-full text-left p-3 rounded-lg transition-colors duration-200 ${
                     selected?.id === combo.id
-                      ? 'bg-brand-50 ring-2 ring-brand-500'
-                      : 'bg-gray-50 hover:bg-gray-100'
+                      ? 'bg-primary/10 ring-2 ring-ring'
+                      : 'bg-background hover:bg-muted'
                   }`}
                 >
-                  <p className="font-semibold text-slate-800">
+                  <p className="font-semibold text-foreground">
                     {combo.lab} - Station {combo.station}
                   </p>
-                  <p className="text-sm text-slate-600">Weeks: {combo.weeks.join(', ')}</p>
+                  <p className="text-sm text-muted-foreground">Weeks: {combo.weeks.join(', ')}</p>
                 </button>
               ))}
             </div>
           ) : (
-            <p className="p-4 text-slate-500">
+            <p className="p-4 text-muted-foreground">
               {isLoading
                 ? 'Loading results...'
                 : 'No lab availability results found. Try adjusting your search criteria.'}

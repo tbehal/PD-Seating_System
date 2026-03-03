@@ -1,7 +1,11 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { fetchRegistrationList, exportRegistrationList } from '../api';
+import React, { useState, useMemo, useRef } from 'react';
+import { toast } from 'sonner';
+import { exportRegistrationList } from '../api';
 import { useScheduleStore } from '../stores/scheduleStore';
 import { useCycles, useUpdateCourseCodes } from '../hooks/useCycles';
+import { useRegistrationList, useRefreshRegistration } from '../hooks/useRegistration';
+import { useFocusTrap } from '../hooks/useFocusTrap';
+import { SkeletonTable } from './ui/SkeletonTable';
 
 export default function RegistrationList() {
   const cycleId = useScheduleStore((s) => s.activeCycleId);
@@ -9,10 +13,9 @@ export default function RegistrationList() {
   const activeCycle = cycles.find((c) => c.id === cycleId);
   const courseCodes = activeCycle?.courseCodes || [];
   const updateCourseCodesMutation = useUpdateCourseCodes();
+  const refreshMutation = useRefreshRegistration();
+  const editCodesRef = useRef(null);
   const [shift, setShift] = useState('AM');
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [exporting, setExporting] = useState(false);
 
@@ -26,26 +29,12 @@ export default function RegistrationList() {
   const [showEditCodes, setShowEditCodes] = useState(false);
   const [editCodesValue, setEditCodesValue] = useState('');
 
-  // Fetch registration data when cycleId or shift changes
-  useEffect(() => {
-    if (!cycleId) return;
-    loadData(false);
-  }, [cycleId, shift]);
+  const { data, isLoading, error, refetch } = useRegistrationList(cycleId, shift);
 
-  const loadData = async (refresh = false) => {
-    if (!cycleId) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const result = await fetchRegistrationList(cycleId, shift, refresh);
-      setData(result);
-    } catch (err) {
-      const msg = err.response?.data?.error || err.message;
-      setError(msg);
-      setData(null);
-    } finally {
-      setLoading(false);
-    }
+  useFocusTrap(editCodesRef, showEditCodes, { onEscape: () => setShowEditCodes(false) });
+
+  const handleRefresh = () => {
+    refreshMutation.mutate({ cycleId, shift });
   };
 
   const handleExport = async () => {
@@ -53,8 +42,8 @@ export default function RegistrationList() {
     setExporting(true);
     try {
       await exportRegistrationList(cycleId, shift);
-    } catch (err) {
-      setError('Failed to export registration list.');
+    } catch {
+      toast.error('Export failed');
     } finally {
       setExporting(false);
     }
@@ -73,9 +62,8 @@ export default function RegistrationList() {
     try {
       await updateCourseCodesMutation.mutateAsync({ cycleId, courseCodes: codes });
       setShowEditCodes(false);
-      setTimeout(() => loadData(true), 300);
     } catch {
-      setError('Failed to update course codes.');
+      toast.error('Failed to update course codes.');
     }
   };
 
@@ -89,7 +77,6 @@ export default function RegistrationList() {
   const filteredRows = useMemo(() => {
     if (!data?.rows) return [];
     return data.rows.filter((row) => {
-      // Text search
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         const matchesSearch =
@@ -99,19 +86,15 @@ export default function RegistrationList() {
           (row.studentId || '').toLowerCase().includes(q);
         if (!matchesSearch) return false;
       }
-      // Payment status filter
       if (filterPayment !== 'ALL' && row.paymentStatus !== filterPayment) return false;
-      // Roadmap filter
       if (filterRoadmap !== 'ALL') {
         if (filterRoadmap === 'YES' && !row.hasRoadmap) return false;
         if (filterRoadmap === 'NO' && row.hasRoadmap) return false;
       }
-      // AFK filter
       if (filterAFK !== 'ALL') {
         if (filterAFK === 'YES' && !row.hasAFK) return false;
         if (filterAFK === 'NO' && row.hasAFK) return false;
       }
-      // ACJ filter
       if (filterACJ !== 'ALL') {
         if (filterACJ === 'YES' && !row.hasACJ) return false;
         if (filterACJ === 'NO' && row.hasACJ) return false;
@@ -142,20 +125,20 @@ export default function RegistrationList() {
   const getPaymentBadgeClass = (status) => {
     const s = (status || '').toLowerCase();
     if (s.includes('paid') || s.includes('closed won') || s.includes('complete')) {
-      return 'bg-green-100 text-green-800';
+      return 'bg-success-muted text-success';
     }
     if (s.includes('pending') || s.includes('open') || s.includes('progress')) {
-      return 'bg-yellow-100 text-yellow-800';
+      return 'bg-warning-muted text-warning';
     }
     if (s.includes('overdue') || s.includes('lost') || s.includes('fail')) {
-      return 'bg-red-100 text-red-800';
+      return 'bg-destructive-muted text-destructive';
     }
-    return 'bg-gray-100 text-gray-800';
+    return 'bg-muted text-secondary-foreground';
   };
 
   if (!cycleId) {
     return (
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center text-gray-500">
+      <div className="bg-card rounded-xl shadow-sm border border-border p-8 text-center text-muted-foreground">
         Select a cycle to view the registration list.
       </div>
     );
@@ -164,18 +147,18 @@ export default function RegistrationList() {
   return (
     <div className="space-y-4">
       {/* Controls bar */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+      <div className="bg-card rounded-xl shadow-sm border border-border p-4">
         <div className="flex flex-wrap items-center gap-4">
           {/* Shift toggle */}
-          <div className="flex gap-1 bg-gray-100 p-1 rounded-lg">
+          <div className="flex gap-1 bg-muted p-1 rounded-lg">
             {['AM', 'PM'].map((s) => (
               <button
                 key={s}
                 onClick={() => setShift(s)}
                 className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
                   shift === s
-                    ? 'bg-white text-brand-700 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-800'
+                    ? 'bg-card text-primary shadow-sm'
+                    : 'text-muted-foreground hover:text-secondary-foreground'
                 }`}
               >
                 {s === 'AM' ? 'Morning (AM)' : 'Afternoon (PM)'}
@@ -190,20 +173,20 @@ export default function RegistrationList() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search by name, email, or student ID..."
-              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+              className="w-full px-3 py-2 border border-input rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
 
           {/* Action buttons */}
           <div className="flex gap-2">
             <button
-              onClick={() => loadData(true)}
-              disabled={loading}
-              className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 transition-colors"
+              onClick={handleRefresh}
+              disabled={isLoading || refreshMutation.isPending}
+              className="px-3 py-2 text-sm font-medium text-secondary-foreground bg-card border border-input rounded-md hover:bg-muted disabled:opacity-50 transition-colors"
               title="Refresh from HubSpot"
             >
               <svg
-                className={`w-4 h-4 inline-block mr-1 ${loading ? 'animate-spin' : ''}`}
+                className={`w-4 h-4 inline-block mr-1 ${isLoading || refreshMutation.isPending ? 'animate-spin' : ''}`}
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -220,13 +203,13 @@ export default function RegistrationList() {
             <button
               onClick={handleExport}
               disabled={exporting || !data?.rows?.length}
-              className="px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 transition-colors"
+              className="px-3 py-2 text-sm font-medium text-secondary-foreground bg-card border border-input rounded-md hover:bg-muted disabled:opacity-50 transition-colors"
             >
               {exporting ? 'Exporting...' : 'Export CSV'}
             </button>
             <button
               onClick={handleEditCodesOpen}
-              className="px-3 py-2 text-sm font-medium text-brand-700 bg-brand-50 border border-brand-200 rounded-md hover:bg-brand-100 transition-colors"
+              className="px-3 py-2 text-sm font-medium text-primary bg-primary/10 border border-primary rounded-md hover:bg-primary/20 transition-colors"
             >
               Edit Course Codes
             </button>
@@ -235,7 +218,7 @@ export default function RegistrationList() {
 
         {/* Column filters */}
         <div className="mt-3 flex flex-wrap items-center gap-3">
-          <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
             Filters:
           </span>
 
@@ -243,10 +226,10 @@ export default function RegistrationList() {
           <select
             value={filterPayment}
             onChange={(e) => setFilterPayment(e.target.value)}
-            className={`px-2 py-1.5 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-brand-500 ${
+            className={`px-2 py-1.5 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-ring ${
               filterPayment !== 'ALL'
-                ? 'border-brand-400 bg-brand-50 text-brand-700'
-                : 'border-gray-300 text-gray-700'
+                ? 'border-primary bg-primary/10 text-primary'
+                : 'border-input text-secondary-foreground'
             }`}
           >
             <option value="ALL">Payment Status: All</option>
@@ -261,10 +244,10 @@ export default function RegistrationList() {
           <select
             value={filterRoadmap}
             onChange={(e) => setFilterRoadmap(e.target.value)}
-            className={`px-2 py-1.5 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-brand-500 ${
+            className={`px-2 py-1.5 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-ring ${
               filterRoadmap !== 'ALL'
-                ? 'border-brand-400 bg-brand-50 text-brand-700'
-                : 'border-gray-300 text-gray-700'
+                ? 'border-primary bg-primary/10 text-primary'
+                : 'border-input text-secondary-foreground'
             }`}
           >
             <option value="ALL">Roadmap: All</option>
@@ -276,10 +259,10 @@ export default function RegistrationList() {
           <select
             value={filterAFK}
             onChange={(e) => setFilterAFK(e.target.value)}
-            className={`px-2 py-1.5 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-brand-500 ${
+            className={`px-2 py-1.5 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-ring ${
               filterAFK !== 'ALL'
-                ? 'border-brand-400 bg-brand-50 text-brand-700'
-                : 'border-gray-300 text-gray-700'
+                ? 'border-primary bg-primary/10 text-primary'
+                : 'border-input text-secondary-foreground'
             }`}
           >
             <option value="ALL">AFK: All</option>
@@ -291,10 +274,10 @@ export default function RegistrationList() {
           <select
             value={filterACJ}
             onChange={(e) => setFilterACJ(e.target.value)}
-            className={`px-2 py-1.5 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-brand-500 ${
+            className={`px-2 py-1.5 text-sm border rounded-md focus:outline-none focus:ring-2 focus:ring-ring ${
               filterACJ !== 'ALL'
-                ? 'border-brand-400 bg-brand-50 text-brand-700'
-                : 'border-gray-300 text-gray-700'
+                ? 'border-primary bg-primary/10 text-primary'
+                : 'border-input text-secondary-foreground'
             }`}
           >
             <option value="ALL">ACJ: All</option>
@@ -306,7 +289,7 @@ export default function RegistrationList() {
           {hasActiveFilters && (
             <button
               onClick={clearAllFilters}
-              className="px-2 py-1.5 text-xs font-medium text-red-600 hover:text-red-800 hover:bg-red-50 rounded-md transition-colors"
+              className="px-2 py-1.5 text-xs font-medium text-destructive hover:text-destructive hover:bg-destructive-muted rounded-md transition-colors"
             >
               Clear Filters
             </button>
@@ -319,7 +302,7 @@ export default function RegistrationList() {
             {courseCodes.map((code, i) => (
               <span
                 key={i}
-                className="inline-flex items-center px-2 py-0.5 rounded text-xs font-mono bg-gray-100 text-gray-700 border border-gray-200"
+                className="inline-flex items-center px-2 py-0.5 rounded text-xs font-mono bg-muted text-secondary-foreground border border-border"
               >
                 {code}
               </span>
@@ -328,28 +311,32 @@ export default function RegistrationList() {
         )}
       </div>
 
-      {/* Error banner */}
-      {error && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-700">
-          <span className="font-medium">Error:</span> {error}
-        </div>
-      )}
-
       {/* Loading state */}
-      {loading && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
-          <div className="inline-block w-8 h-8 border-4 border-brand-200 border-t-brand-600 rounded-full animate-spin mb-4" />
-          <p className="text-gray-600">Fetching live data from HubSpot...</p>
+      {isLoading && <SkeletonTable rows={10} columns={8} />}
+
+      {/* Error state */}
+      {error && !isLoading && (
+        <div className="rounded-lg border border-destructive/30 bg-destructive-muted p-4 text-center">
+          <p className="text-destructive font-medium">Failed to load registration data</p>
+          <p className="text-muted-foreground text-sm mt-1">
+            {error.response?.data?.error || error.message}
+          </p>
+          <button
+            onClick={() => refetch()}
+            className="mt-3 px-4 py-2 text-sm bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+          >
+            Retry
+          </button>
         </div>
       )}
 
       {/* Empty state: no course codes */}
-      {!loading && data?.meta?.noCodes && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
-          <p className="text-gray-600 mb-3">No course codes configured for this cycle.</p>
+      {!isLoading && data?.meta?.noCodes && (
+        <div className="bg-card rounded-xl shadow-sm border border-border p-12 text-center">
+          <p className="text-muted-foreground mb-3">No course codes configured for this cycle.</p>
           <button
             onClick={handleEditCodesOpen}
-            className="px-4 py-2 text-sm font-medium text-white bg-brand-500 rounded-md hover:bg-brand-600 transition-colors"
+            className="px-4 py-2 text-sm font-medium text-primary-foreground bg-primary rounded-md hover:bg-primary/90 transition-colors"
           >
             Add Course Codes
           </button>
@@ -357,19 +344,19 @@ export default function RegistrationList() {
       )}
 
       {/* Empty state: no students */}
-      {!loading && data && !data.meta?.noCodes && data.rows.length === 0 && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
-          <p className="text-gray-600">
+      {!isLoading && data && !data.meta?.noCodes && data.rows.length === 0 && (
+        <div className="bg-card rounded-xl shadow-sm border border-border p-12 text-center">
+          <p className="text-muted-foreground">
             No students found for the selected course codes and shift.
           </p>
         </div>
       )}
 
       {/* Registration table */}
-      {!loading && data && data.rows.length > 0 && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+      {!isLoading && data && data.rows.length > 0 && (
+        <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden">
           {/* Meta info */}
-          <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between text-sm text-gray-600">
+          <div className="px-4 py-3 bg-muted/50 border-b border-border flex items-center justify-between text-sm text-muted-foreground">
             <span>
               Showing {filteredRows.length} of {data.rows.length} students
               {(searchQuery || hasActiveFilters) && ` (filtered)`}
@@ -384,61 +371,75 @@ export default function RegistrationList() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm text-left">
               <thead>
-                <tr className="bg-gray-50 border-b border-gray-200">
-                  <th className="px-3 py-2 font-medium text-gray-700 whitespace-nowrap">Seat #</th>
-                  <th className="px-3 py-2 font-medium text-gray-700 whitespace-nowrap">
+                <tr className="bg-muted/50 border-b border-border">
+                  <th className="px-3 py-2 font-medium text-secondary-foreground whitespace-nowrap">
+                    Seat #
+                  </th>
+                  <th className="px-3 py-2 font-medium text-secondary-foreground whitespace-nowrap">
                     First Name
                   </th>
-                  <th className="px-3 py-2 font-medium text-gray-700 whitespace-nowrap">
+                  <th className="px-3 py-2 font-medium text-secondary-foreground whitespace-nowrap">
                     Last Name
                   </th>
-                  <th className="px-3 py-2 font-medium text-gray-700 whitespace-nowrap">Email</th>
-                  <th className="px-3 py-2 font-medium text-gray-700 whitespace-nowrap">Phone</th>
-                  <th className="px-3 py-2 font-medium text-gray-700 whitespace-nowrap">
+                  <th className="px-3 py-2 font-medium text-secondary-foreground whitespace-nowrap">
+                    Email
+                  </th>
+                  <th className="px-3 py-2 font-medium text-secondary-foreground whitespace-nowrap">
+                    Phone
+                  </th>
+                  <th className="px-3 py-2 font-medium text-secondary-foreground whitespace-nowrap">
                     Student ID
                   </th>
-                  <th className="px-3 py-2 font-medium text-gray-700 whitespace-nowrap">
+                  <th className="px-3 py-2 font-medium text-secondary-foreground whitespace-nowrap">
                     Course Start
                   </th>
-                  <th className="px-3 py-2 font-medium text-gray-700 whitespace-nowrap">
+                  <th className="px-3 py-2 font-medium text-secondary-foreground whitespace-nowrap">
                     Course End
                   </th>
-                  <th className="px-3 py-2 font-medium text-gray-700 whitespace-nowrap">
+                  <th className="px-3 py-2 font-medium text-secondary-foreground whitespace-nowrap">
                     Reg. Date
                   </th>
-                  <th className="px-3 py-2 font-medium text-gray-700 whitespace-nowrap">
+                  <th className="px-3 py-2 font-medium text-secondary-foreground whitespace-nowrap">
                     Payment Status
                   </th>
-                  <th className="px-3 py-2 font-medium text-gray-700 whitespace-nowrap">
+                  <th className="px-3 py-2 font-medium text-secondary-foreground whitespace-nowrap">
                     Outstanding
                   </th>
-                  <th className="px-3 py-2 font-medium text-gray-700 whitespace-nowrap">Cycle #</th>
-                  <th className="px-3 py-2 font-medium text-gray-700 whitespace-nowrap">Roadmap</th>
-                  <th className="px-3 py-2 font-medium text-gray-700 whitespace-nowrap">AFK</th>
-                  <th className="px-3 py-2 font-medium text-gray-700 whitespace-nowrap">ACJ</th>
-                  <th className="px-3 py-2 font-medium text-gray-700 whitespace-nowrap">
+                  <th className="px-3 py-2 font-medium text-secondary-foreground whitespace-nowrap">
+                    Cycle #
+                  </th>
+                  <th className="px-3 py-2 font-medium text-secondary-foreground whitespace-nowrap">
+                    Roadmap
+                  </th>
+                  <th className="px-3 py-2 font-medium text-secondary-foreground whitespace-nowrap">
+                    AFK
+                  </th>
+                  <th className="px-3 py-2 font-medium text-secondary-foreground whitespace-nowrap">
+                    ACJ
+                  </th>
+                  <th className="px-3 py-2 font-medium text-secondary-foreground whitespace-nowrap">
                     Exam Date
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-border/50">
                 {filteredRows.map((row) => (
-                  <tr key={row.contactId} className="hover:bg-gray-50">
-                    <td className="px-3 py-2 text-gray-900 font-medium">{row.seatNumber}</td>
-                    <td className="px-3 py-2 text-gray-900">{row.firstName}</td>
-                    <td className="px-3 py-2 text-gray-900">{row.lastName}</td>
-                    <td className="px-3 py-2 text-gray-600 text-xs">{row.email}</td>
-                    <td className="px-3 py-2 text-gray-600">{row.phone || '-'}</td>
-                    <td className="px-3 py-2 text-gray-600 font-mono text-xs">
+                  <tr key={row.contactId} className="hover:bg-muted">
+                    <td className="px-3 py-2 text-foreground font-medium">{row.seatNumber}</td>
+                    <td className="px-3 py-2 text-foreground">{row.firstName}</td>
+                    <td className="px-3 py-2 text-foreground">{row.lastName}</td>
+                    <td className="px-3 py-2 text-muted-foreground text-xs">{row.email}</td>
+                    <td className="px-3 py-2 text-muted-foreground">{row.phone || '-'}</td>
+                    <td className="px-3 py-2 text-muted-foreground font-mono text-xs">
                       {row.studentId || '-'}
                     </td>
-                    <td className="px-3 py-2 text-gray-600 whitespace-nowrap">
+                    <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">
                       {formatDate(row.courseStartDate)}
                     </td>
-                    <td className="px-3 py-2 text-gray-600 whitespace-nowrap">
+                    <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">
                       {formatDate(row.courseEndDate)}
                     </td>
-                    <td className="px-3 py-2 text-gray-600 whitespace-nowrap">
+                    <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">
                       {formatDate(row.registrationDate)}
                     </td>
                     <td className="px-3 py-2">
@@ -449,29 +450,39 @@ export default function RegistrationList() {
                       </span>
                     </td>
                     <td
-                      className={`px-3 py-2 font-medium ${row.outstanding > 0 ? 'text-red-600' : 'text-gray-600'}`}
+                      className={`px-3 py-2 font-medium ${row.outstanding > 0 ? 'text-destructive' : 'text-muted-foreground'}`}
                     >
                       {row.outstanding > 0 ? `$${row.outstanding.toFixed(2)}` : '$0.00'}
                     </td>
-                    <td className="px-3 py-2 text-gray-900 text-center">{row.cycleCount}</td>
+                    <td className="px-3 py-2 text-foreground text-center">{row.cycleCount}</td>
                     <td className="px-3 py-2 text-center">
                       <span
-                        className={row.hasRoadmap ? 'text-green-600 font-medium' : 'text-gray-400'}
+                        className={
+                          row.hasRoadmap ? 'text-success font-medium' : 'text-muted-foreground/60'
+                        }
                       >
                         {row.hasRoadmap ? 'Yes' : 'No'}
                       </span>
                     </td>
                     <td className="px-3 py-2 text-center">
-                      <span className={row.hasAFK ? 'text-green-600 font-medium' : 'text-gray-400'}>
+                      <span
+                        className={
+                          row.hasAFK ? 'text-success font-medium' : 'text-muted-foreground/60'
+                        }
+                      >
                         {row.hasAFK ? 'Yes' : 'No'}
                       </span>
                     </td>
                     <td className="px-3 py-2 text-center">
-                      <span className={row.hasACJ ? 'text-green-600 font-medium' : 'text-gray-400'}>
+                      <span
+                        className={
+                          row.hasACJ ? 'text-success font-medium' : 'text-muted-foreground/60'
+                        }
+                      >
                         {row.hasACJ ? 'Yes' : 'No'}
                       </span>
                     </td>
-                    <td className="px-3 py-2 text-gray-600 whitespace-nowrap">
+                    <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">
                       {formatDate(row.examDate)}
                     </td>
                   </tr>
@@ -484,10 +495,15 @@ export default function RegistrationList() {
 
       {/* Edit Course Codes Dialog */}
       {showEditCodes && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
-            <h3 className="text-lg font-bold text-slate-800 mb-2">Edit Course Codes</h3>
-            <p className="text-sm text-gray-500 mb-4">
+        <div className="fixed inset-0 bg-background/70 backdrop-blur-md border-white/10 flex items-center justify-center z-50 p-4">
+          <div
+            ref={editCodesRef}
+            role="dialog"
+            aria-modal="true"
+            className="bg-card rounded-xl shadow-2xl max-w-md w-full p-6"
+          >
+            <h3 className="text-lg font-bold text-foreground mb-2">Edit Course Codes</h3>
+            <p className="text-sm text-muted-foreground mb-4">
               Enter one course code per line. Codes containing "AM" or "PM" will be auto-filtered by
               shift.
             </p>
@@ -495,19 +511,19 @@ export default function RegistrationList() {
               value={editCodesValue}
               onChange={(e) => setEditCodesValue(e.target.value)}
               rows={6}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-500 text-sm font-mono"
+              className="w-full px-3 py-2 border border-input rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-ring text-sm font-mono"
               placeholder={'NDC-26-Mis1-Clinical-AM\nNDC-26-Mis1-Clinical-PM'}
             />
             <div className="flex gap-3 mt-4">
               <button
                 onClick={handleEditCodesSave}
-                className="flex-1 py-2 px-4 rounded-md text-white font-medium bg-brand-500 hover:bg-brand-600 transition-colors"
+                className="flex-1 py-2 px-4 rounded-md text-primary-foreground font-medium bg-primary hover:bg-primary/90 transition-colors"
               >
                 Save
               </button>
               <button
                 onClick={() => setShowEditCodes(false)}
-                className="flex-1 py-2 px-4 rounded-md bg-gray-200 text-gray-800 font-medium hover:bg-gray-300 transition-colors"
+                className="flex-1 py-2 px-4 rounded-md bg-secondary text-foreground font-medium hover:bg-secondary/80 transition-colors"
               >
                 Cancel
               </button>

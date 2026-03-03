@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from 'react';
+import { toast } from 'sonner';
 import { useScheduleStore } from '../stores/scheduleStore';
 import { useCycles, useUpdateWeeks } from '../hooks/useCycles';
 import { useGrid } from '../hooks/useGrid';
@@ -36,15 +37,11 @@ export default function ScheduleView() {
   const [isResultsCollapsed, setIsResultsCollapsed] = useState(false);
   const [traineeName, setTraineeName] = useState('');
   const [selectedContact, setSelectedContact] = useState(null);
-  const [error, setError] = useState(null);
-  const [bookingSuccess, setBookingSuccess] = useState('');
   const [cellBookingDialog, setCellBookingDialog] = useState(null);
   const [studentInfoDialog, setStudentInfoDialog] = useState(null);
 
   const handleSearch = useCallback(async () => {
     if (!activeCycleId) return;
-    setError(null);
-    setBookingSuccess('');
     setResults([]);
     setSelectedCombination(null);
     try {
@@ -57,17 +54,12 @@ export default function ScheduleView() {
       });
       setResults(combinations);
     } catch {
-      setError('Failed to search for availability. Please try again.');
+      toast.error('Search failed');
     }
   }, [activeCycleId, filters, searchCriteria, setSelectedCombination]);
 
   const handleBookSlot = async () => {
-    if (!selectedCombination || !traineeName || !activeCycleId) {
-      setError('Please select a slot and enter a trainee name to book.');
-      return;
-    }
-    setError(null);
-    setBookingSuccess('');
+    if (!selectedCombination || !traineeName || !activeCycleId) return;
     try {
       await bookSlotMutation.mutateAsync({
         cycleId: activeCycleId,
@@ -77,15 +69,13 @@ export default function ScheduleView() {
         traineeName,
         contactId: selectedContact?.id,
       });
-      setBookingSuccess(
-        `Successfully booked ${selectedCombination.lab} - Station ${selectedCombination.station} for ${traineeName}.`,
-      );
+      toast.success('Booked successfully');
       setSelectedCombination(null);
       setTraineeName('');
       setSelectedContact(null);
       await handleSearch();
     } catch (err) {
-      setError(err.response?.data?.error || 'An unexpected error occurred during booking.');
+      toast.error(err.response?.data?.error || 'An unexpected error occurred during booking.');
     }
   };
 
@@ -139,7 +129,7 @@ export default function ScheduleView() {
         });
         setStudentInfoDialog(null);
       } catch (err) {
-        setError(err.response?.data?.error || 'Failed to unbook slot.');
+        toast.error(err.response?.data?.error || 'Failed to unbook slot.');
       }
     },
     [activeCycleId, unbookSlotMutation],
@@ -151,7 +141,7 @@ export default function ScheduleView() {
       try {
         await unbookSlotMutation.mutateAsync({ cycleId: activeCycleId, stationId, shift, weeks });
       } catch (err) {
-        setError(err.response?.data?.error || 'Failed to unbook selected slots.');
+        toast.error(err.response?.data?.error || 'Failed to unbook selected slots.');
       }
     },
     [activeCycleId, unbookSlotMutation],
@@ -172,12 +162,8 @@ export default function ScheduleView() {
   );
 
   const handleCellBookingSubmit = async ({ traineeName: name, contactId }) => {
-    if (!cellBookingDialog || !name.trim() || !activeCycleId) {
-      setError('Please enter a trainee name.');
-      return;
-    }
+    if (!cellBookingDialog || !name.trim() || !activeCycleId) return;
     try {
-      setError(null);
       await bookSlotMutation.mutateAsync({
         cycleId: activeCycleId,
         stationId: cellBookingDialog.stationId,
@@ -186,14 +172,10 @@ export default function ScheduleView() {
         traineeName: name.trim(),
         contactId,
       });
-      const weeksText =
-        cellBookingDialog.weeks.length > 1
-          ? `weeks ${cellBookingDialog.weeks.join(', ')}`
-          : `week ${cellBookingDialog.weeks[0]}`;
-      setBookingSuccess(`Successfully booked ${cellBookingDialog.stationLabel} for ${weeksText}!`);
+      toast.success('Booked successfully');
       setCellBookingDialog(null);
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to book slot.');
+      toast.error(err.response?.data?.error || 'Failed to book slot.');
     }
   };
 
@@ -201,7 +183,7 @@ export default function ScheduleView() {
     try {
       await updateWeeksMutation.mutateAsync({ cycleId, weeks });
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to update week dates.');
+      toast.error(err.response?.data?.error || 'Failed to update week dates.');
     }
   };
 
@@ -210,7 +192,7 @@ export default function ScheduleView() {
     try {
       await exportCycle(activeCycleId, filters);
     } catch {
-      setError('Failed to export data.');
+      toast.error('Export failed');
     }
   };
 
@@ -219,25 +201,25 @@ export default function ScheduleView() {
     try {
       await resetBookingsMutation.mutateAsync(activeCycleId);
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to clear all bookings.');
+      toast.error(err.response?.data?.error || 'Failed to clear all bookings.');
     }
   };
 
   return (
     <>
-      <div className="mb-6 bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+      <div className="mb-6 bg-card p-4 rounded-xl shadow-sm border border-border">
         <FilterBar />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-        <div className="bg-white p-5 rounded-xl shadow-md border border-gray-200">
-          <h2 className="text-lg font-semibold text-slate-800 mb-3">Search Criteria</h2>
+        <div className="bg-card p-5 rounded-xl shadow-md border border-border">
+          <h2 className="text-lg font-semibold text-foreground mb-3">Search Criteria</h2>
           <SearchCriteriaForm
             onSearch={handleSearch}
             isLoading={findCombinationsMutation.isPending}
           />
         </div>
-        <div className="bg-white p-5 rounded-xl shadow-md border border-gray-200">
+        <div className="bg-card p-5 rounded-xl shadow-md border border-border">
           <BookingSection
             traineeName={traineeName}
             onTraineeNameChange={(e) => setTraineeName(e.target.value)}
@@ -246,8 +228,6 @@ export default function ScheduleView() {
             onBook={handleBookSlot}
             isBooking={bookSlotMutation.isPending}
             selectedCombination={selectedCombination}
-            error={error}
-            successMessage={bookingSuccess}
             locked={isLocked}
           />
         </div>

@@ -49,13 +49,13 @@ export default function SearchCriteriaForm({ onSearch, isLoading }) {
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <div>
-        <label htmlFor="startWeek" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="startWeek" className="block text-sm font-medium text-secondary-foreground">
           Start Week
         </label>
         <select
           id="startWeek"
           {...register('startWeek', { valueAsNumber: true })}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm"
+          className="mt-1 block w-full rounded-md border-input shadow-sm focus:border-ring focus:ring-ring sm:text-sm"
         >
           {Array.from({ length: 12 }, (_, i) => i + 1).map((week) => (
             <option key={`start-${week}`} value={week}>
@@ -64,17 +64,17 @@ export default function SearchCriteriaForm({ onSearch, isLoading }) {
           ))}
         </select>
         {errors.startWeek && (
-          <p className="mt-1 text-sm text-red-600">{errors.startWeek.message}</p>
+          <p className="mt-1 text-sm text-destructive">{errors.startWeek.message}</p>
         )}
       </div>
       <div>
-        <label htmlFor="endWeek" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="endWeek" className="block text-sm font-medium text-secondary-foreground">
           End Week
         </label>
         <select
           id="endWeek"
           {...register('endWeek', { valueAsNumber: true })}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm"
+          className="mt-1 block w-full rounded-md border-input shadow-sm focus:border-ring focus:ring-ring sm:text-sm"
         >
           {Array.from({ length: 12 }, (_, i) => i + 1).map((week) => (
             <option key={`end-${week}`} value={week} disabled={week < startWeek}>
@@ -82,27 +82,32 @@ export default function SearchCriteriaForm({ onSearch, isLoading }) {
             </option>
           ))}
         </select>
-        {errors.endWeek && <p className="mt-1 text-sm text-red-600">{errors.endWeek.message}</p>}
+        {errors.endWeek && (
+          <p className="mt-1 text-sm text-destructive">{errors.endWeek.message}</p>
+        )}
       </div>
       <div>
-        <label htmlFor="weeksNeeded" className="block text-sm font-medium text-gray-700">
+        <label
+          htmlFor="weeksNeeded"
+          className="block text-sm font-medium text-secondary-foreground"
+        >
           Consecutive Weeks Needed
         </label>
         <input
           type="number"
           id="weeksNeeded"
           {...register('weeksNeeded', { valueAsNumber: true })}
-          className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm"
+          className="mt-1 block w-full rounded-md border-input shadow-sm focus:border-ring focus:ring-ring sm:text-sm"
           min="1"
         />
         {errors.weeksNeeded && (
-          <p className="mt-1 text-sm text-red-600">{errors.weeksNeeded.message}</p>
+          <p className="mt-1 text-sm text-destructive">{errors.weeksNeeded.message}</p>
         )}
       </div>
       <button
         type="submit"
         disabled={isLoading}
-        className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-brand-500 hover:bg-brand-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand-500 disabled:bg-gray-400"
+        className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-primary-foreground bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ring disabled:bg-muted"
       >
         {isLoading ? 'Searching...' : 'Find Availability'}
       </button>

@@ -9,8 +9,6 @@ export default function BookingSection({
   onBook,
   isBooking,
   selectedCombination,
-  error,
-  successMessage,
   locked,
 }) {
   const handleContactSelect = (contact) => {
@@ -22,15 +20,12 @@ export default function BookingSection({
 
   return (
     <div>
-      <h2 className="text-xl font-semibold text-slate-800 mb-4">Book Lab Slot</h2>
+      <h2 className="text-xl font-semibold text-foreground mb-4">Book Lab Slot</h2>
       <div className="space-y-4">
-        {error && <p className="text-sm text-red-600 bg-red-100 p-3 rounded-md">{error}</p>}
-        {successMessage && (
-          <p className="text-sm text-green-600 bg-green-100 p-3 rounded-md">{successMessage}</p>
-        )}
-
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Student Search</label>
+          <label className="block text-sm font-medium text-secondary-foreground mb-2">
+            Student Search
+          </label>
           <ContactSearch
             onContactSelect={handleContactSelect}
             selectedContact={selectedContact}
@@ -39,7 +34,10 @@ export default function BookingSection({
         </div>
 
         <div>
-          <label htmlFor="traineeName" className="block text-sm font-medium text-gray-700">
+          <label
+            htmlFor="traineeName"
+            className="block text-sm font-medium text-secondary-foreground"
+          >
             Trainee Name
           </label>
           <input
@@ -48,25 +46,25 @@ export default function BookingSection({
             value={traineeName}
             onChange={onTraineeNameChange}
             placeholder="Enter trainee name"
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-brand-500 focus:ring-brand-500 sm:text-sm"
+            className="mt-1 block w-full rounded-md border-input shadow-sm focus:border-ring focus:ring-ring sm:text-sm"
             disabled={locked}
           />
         </div>
 
         {selectedContact && (
-          <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
+          <div className="p-3 bg-info-muted border border-info/30 rounded-md">
             <div className="flex justify-between items-center">
               <div>
-                <div className="font-medium text-blue-900">
+                <div className="font-medium text-foreground">
                   HubSpot Contact: {selectedContact.fullName}
                 </div>
-                <div className="text-sm text-blue-700">
+                <div className="text-sm text-muted-foreground">
                   Payment Status:{' '}
                   <span className="font-semibold">
                     {selectedContact.paymentStatus || 'Unknown'}
                   </span>
                 </div>
-                <div className="text-sm text-blue-700">
+                <div className="text-sm text-muted-foreground">
                   Lifecycle Stage: {selectedContact.lifeCycleStage}
                 </div>
               </div>
@@ -77,10 +75,10 @@ export default function BookingSection({
         <button
           onClick={onBook}
           disabled={!selectedCombination || !traineeName || isBooking || locked}
-          className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white transition-colors duration-200 ${
+          className={`w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-primary-foreground transition-colors duration-200 ${
             selectedCombination && traineeName && !isBooking && !locked
-              ? 'bg-brand-500 hover:bg-brand-600 focus:ring-2 focus:ring-offset-2 focus:ring-brand-500'
-              : 'bg-gray-400 cursor-not-allowed'
+              ? 'bg-primary hover:bg-primary/90 focus:ring-2 focus:ring-offset-2 focus:ring-ring'
+              : 'bg-muted cursor-not-allowed'
           }`}
         >
           {locked ? 'Cycle Locked' : isBooking ? 'Booking...' : 'Book Selected Slot'}
@@ -88,9 +86,9 @@ export default function BookingSection({
 
         {selectedCombination && (
           <div className="pt-2">
-            <p className="text-sm text-slate-600">
+            <p className="text-sm text-muted-foreground">
               Selected:{' '}
-              <span className="font-semibold text-slate-800">
+              <span className="font-semibold text-foreground">
                 {selectedCombination.lab} - Station {selectedCombination.station}
               </span>{' '}
               for weeks {selectedCombination.weeks.join(', ')}.
