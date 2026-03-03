@@ -4,4 +4,8 @@ module.exports = {
   globalTeardown: './__tests__/teardown.js',
   setupFiles: ['./__tests__/env-setup.js'],
   testMatch: ['**/__tests__/**/*.test.js'],
+  transform: {
+    '^.+\\.ts$': 'ts-jest',
+  },
+  moduleFileExtensions: ['ts', 'js', 'json'],
 };

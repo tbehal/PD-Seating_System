@@ -12,14 +12,18 @@ RUN npx prisma generate
 
 # Copy app source
 COPY . .
+RUN npm run build
 
 # --- Final Image ---
 FROM node:20-alpine
 
 WORKDIR /app
 
-# Copy built assets
-COPY --from=builder /app .
+# Copy built artifacts only
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/package*.json ./
 
 # Expose port; run migration then start
 EXPOSE 5001
