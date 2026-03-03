@@ -531,13 +531,17 @@ cd frontend && npm test
 
 ---
 
-## Known Limitations (See REMEDIATION.md)
+## Known Limitations
 
-- Frontend stays JavaScript (no TypeScript migration planned)
-- No 404 catch-all route
-- Single admin password, no RBAC
-- HubSpot calls are synchronous (can block 5-10s)
-- No pagination on list endpoints
+All 10 remediation phases are complete. Remaining limitations are intentional scope decisions:
+
+- Frontend stays JavaScript (no TypeScript migration — backend only)
+- Single admin password, no RBAC (single-user system by design)
+- HubSpot calls are synchronous (Redis/BullMQ skipped — in-memory caching sufficient for single-instance)
+- No pagination on list endpoints (`respond.paginated()` helper exists but not wired)
 - SQLite in dev vs PostgreSQL in prod (behavioral differences possible)
+- No E2E tests (Playwright deferred)
+- No Sentry/error monitoring (deferred)
+- `courseCodes` stored as JSON string in SQLite (needs proper array column on PostgreSQL migration)
 
-See `REMEDIATION.md` for the complete 10-phase plan to address all gaps (Phases 1-8 complete, 9-10 remaining).
+See `REMEDIATION.md` for the complete 10-phase remediation plan (all phases complete).
