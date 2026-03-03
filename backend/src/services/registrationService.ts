@@ -12,9 +12,8 @@ function ensureHubSpot(): void {
 function filterShiftCodes(courseCodes: string[], shift: string): string[] {
   const shiftCodes = courseCodes.filter((code) => {
     const upper = code.toUpperCase();
-    if (shift === 'AM')
-      return upper.includes('-AM') || upper.includes('_AM') || upper.endsWith('AM');
-    return upper.includes('-PM') || upper.includes('_PM') || upper.endsWith('PM');
+    if (shift === 'AM') return upper.includes('-AM') || upper.includes('_AM');
+    return upper.includes('-PM') || upper.includes('_PM');
   });
   return shiftCodes.length > 0 ? shiftCodes : courseCodes;
 }

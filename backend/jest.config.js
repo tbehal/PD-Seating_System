@@ -8,4 +8,16 @@ module.exports = {
     '^.+\\.ts$': 'ts-jest',
   },
   moduleFileExtensions: ['ts', 'js', 'json'],
+  collectCoverage: false,
+  collectCoverageFrom: ['src/**/*.ts', '!src/types/**', '!src/swagger.ts', '!src/hubspot.ts'],
+  coverageDirectory: 'coverage',
+  coveragePathIgnorePatterns: ['/node_modules/', '/dist/', '/__tests__/'],
+  coverageThreshold: {
+    global: {
+      lines: 70,
+      functions: 70,
+      branches: 60,
+      statements: 70,
+    },
+  },
 };

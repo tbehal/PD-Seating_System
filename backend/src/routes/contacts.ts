@@ -3,8 +3,15 @@ import validate from '../middleware/validate';
 import respond from '../middleware/respond';
 import * as schema from '../schemas/contacts';
 import hubspot from '../hubspot';
+import AppError from '../lib/AppError';
 
 const router = Router();
+
+function ensureHubSpot(): void {
+  if (!hubspot.apiKey) {
+    throw new AppError(503, 'HubSpot API key not configured. Please set HUBSPOT_API_KEY.');
+  }
+}
 
 /**
  * @openapi
@@ -50,6 +57,7 @@ router.get(
   validate(schema.searchQuery, 'query'),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      ensureHubSpot();
       const q = req.query.q as string;
       const limit = Number(req.query.limit);
       const results = (await hubspot.searchContacts(q, limit)) as unknown[];
@@ -94,6 +102,7 @@ router.get(
   validate(schema.idParam, 'params'),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      ensureHubSpot();
       const contact = await hubspot.getContactById(req.params['id'] as string);
       respond.ok(res, contact, 'Contact fetched.');
     } catch (err) {
@@ -144,6 +153,7 @@ router.patch(
   validate(schema.updatePaymentStatus),
   async (req: Request, res: Response, next: NextFunction) => {
     try {
+      ensureHubSpot();
       const { paymentStatus } = req.body as { paymentStatus: string };
       const result = await hubspot.updateContactPaymentStatus(
         req.params['id'] as string,

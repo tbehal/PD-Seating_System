@@ -32,8 +32,8 @@ beforeAll(async () => {
   });
   testCycleId = cycle.id;
 
-  // Book a station for the export test
-  const station = await prisma.station.findFirst();
+  // Book a Lab A station for the export test (pin to REGULAR/Lab A so CSV assertions hold)
+  const station = await prisma.station.findFirst({ where: { lab: { name: 'Lab A' } } });
   await prisma.booking.create({
     data: {
       cycleId: testCycleId,

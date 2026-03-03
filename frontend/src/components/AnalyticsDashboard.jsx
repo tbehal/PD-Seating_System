@@ -900,7 +900,9 @@ export default function AnalyticsDashboard() {
             <SummaryCard
               label="Overall Occupancy"
               value={
-                summary.overallPercent !== null ? `${summary.overallPercent.toFixed(1)}%` : null
+                summary.overallPercent !== undefined && summary.overallPercent !== null
+                  ? `${summary.overallPercent.toFixed(1)}%`
+                  : null
               }
               loading={seatingLoading}
             />
@@ -911,12 +913,20 @@ export default function AnalyticsDashboard() {
             />
             <SummaryCard
               label="AM Occupancy"
-              value={amShift?.percent !== null ? `${amShift.percent.toFixed(1)}%` : null}
+              value={
+                amShift?.percent !== undefined && amShift?.percent !== null
+                  ? `${amShift.percent.toFixed(1)}%`
+                  : null
+              }
               loading={seatingLoading}
             />
             <SummaryCard
               label="PM Occupancy"
-              value={pmShift?.percent !== null ? `${pmShift.percent.toFixed(1)}%` : null}
+              value={
+                pmShift?.percent !== undefined && pmShift?.percent !== null
+                  ? `${pmShift.percent.toFixed(1)}%`
+                  : null
+              }
               loading={seatingLoading}
             />
           </div>

@@ -76,6 +76,7 @@ export default function CycleTabs({
               }
             }}
             aria-label={`Toggle lock for ${cycle.name}`}
+            aria-selected={activeCycleId === cycle.id}
             className={`group flex items-center gap-1.5 pl-4 pr-2 py-2 text-sm font-medium rounded-t-lg whitespace-nowrap transition-colors border border-b-0 ${
               activeCycleId === cycle.id
                 ? 'bg-card text-primary border-input shadow-sm'
@@ -83,7 +84,13 @@ export default function CycleTabs({
             }`}
           >
             {cycle.locked && (
-              <svg className="w-3.5 h-3.5 text-warning" fill="currentColor" viewBox="0 0 20 20">
+              <svg
+                data-testid="lock-icon"
+                aria-label="Locked"
+                className="w-3.5 h-3.5 text-warning"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
                 <path
                   fillRule="evenodd"
                   d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"

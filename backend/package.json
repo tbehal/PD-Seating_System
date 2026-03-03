@@ -8,6 +8,7 @@
     "build": "prisma generate && tsc",
     "typecheck": "tsc --noEmit",
     "test": "jest --runInBand",
+    "test:coverage": "jest --runInBand --coverage",
     "lint": "eslint src/",
     "lint:fix": "eslint src/ --fix",
     "format": "prettier --write \"src/**/*.ts\"",

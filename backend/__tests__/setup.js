@@ -35,5 +35,27 @@ module.exports = async function globalSetup() {
     },
   });
 
+  // Lab B — REGULAR (second regular lab for multi-lab testing)
+  const labB = await prisma.lab.create({
+    data: { name: 'Lab B', labType: 'REGULAR' },
+  });
+  await prisma.station.createMany({
+    data: [
+      { labId: labB.id, number: 1, side: 'LH' },
+      { labId: labB.id, number: 2, side: 'RH' },
+    ],
+  });
+
+  // Lab D — PRE_EXAM (for labType filter testing)
+  const labD = await prisma.lab.create({
+    data: { name: 'Lab D', labType: 'PRE_EXAM' },
+  });
+  await prisma.station.createMany({
+    data: [
+      { labId: labD.id, number: 1, side: 'LH' },
+      { labId: labD.id, number: 2, side: 'RH' },
+    ],
+  });
+
   await prisma.$disconnect();
 };
