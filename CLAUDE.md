@@ -1,3 +1,7 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
 # NDECCSchedApp — Project Instructions
 
 ## What This Is
@@ -102,13 +106,40 @@ cd backend && npm install && npx prisma generate && npx prisma migrate deploy &&
 cd frontend && npm install && npm start
 # → http://localhost:5173 (proxies /api to backend)
 
-# Tests
-cd backend && npm test
-cd frontend && npm test
-
 # Docker (dev)
 docker compose -f docker-compose.dev.yml up --build
 ```
+
+## Common Commands
+
+```bash
+# Backend tests (Jest + Supertest, runs sequentially via --runInBand)
+cd backend && npm test                          # all tests
+cd backend && npx jest --runInBand <pattern>    # single file, e.g. npx jest --runInBand cycles
+
+# Frontend tests (Vitest)
+cd frontend && npm test                         # all tests
+cd frontend && npx vitest run <pattern>         # single file, e.g. npx vitest run ScheduleView
+
+# Type checking (backend only — frontend is JavaScript)
+cd backend && npm run typecheck                 # tsc --noEmit
+
+# Linting
+cd backend && npm run lint                      # ESLint backend
+cd frontend && npm run lint                     # ESLint frontend
+npm run lint                                    # both (from root)
+
+# Formatting
+cd backend && npm run format                    # Prettier backend
+cd frontend && npm run format                   # Prettier frontend
+
+# Prisma
+cd backend && npx prisma migrate dev --name <description>   # new migration
+cd backend && npx prisma studio                              # DB browser
+cd backend && npx prisma db seed                             # seed data
+```
+
+**Pre-commit hook:** Husky runs `lint-staged` which auto-formats staged `.ts`, `.js`, `.jsx`, `.json`, `.css`, `.md` files with Prettier.
 
 ## Environment Variables
 
@@ -142,20 +173,20 @@ Request → Helmet → CORS → JSON parser → Cookie parser → Rate limiter
 1. **Schema first** — create/update Joi schema in `schemas/`
 2. **Service** — add business logic to the appropriate service in `services/`
 3. **Route** — thin adapter in `routes/` that calls the service
-4. **Wire** — mount in `app.js` under the correct router
+4. **Wire** — mount in `app.ts` under the correct router
 
 Example:
 
-```js
-// schemas/myFeature.js
+```ts
+// schemas/myFeature.ts
 const mySchema = Joi.object({ name: Joi.string().required() });
 
-// services/myService.js
+// services/myService.ts
 async function doThing(data) {
   return prisma.model.create({ data });
 }
 
-// routes/myRoute.js
+// routes/myRoute.ts
 router.post('/', validate(mySchema), async (req, res, next) => {
   try {
     const result = await myService.doThing(req.body);
@@ -303,11 +334,12 @@ Always check lock state in the service layer before mutating.
 ### Backend Tests
 
 ```bash
-cd backend && npm test
+cd backend && npm test                          # all tests (--runInBand)
+cd backend && npx jest --runInBand <pattern>    # single file by name match
 ```
 
-- Framework: Jest + Supertest
-- Test DB: `prisma/test.db` (created fresh per run)
+- Framework: Jest + Supertest, with `ts-jest` transform (test files are `.test.js`, source is `.ts`)
+- Test DB: `prisma/test.db` (created fresh per run via `globalSetup`/`globalTeardown`)
 - Auth helper: `getAuthCookie()` from `__tests__/helpers.js`
 - Pattern: one `describe` per endpoint group, `beforeAll` creates test data, `afterAll` cleans up
 
@@ -339,7 +371,7 @@ cd frontend && npm test
 - **One router per domain.** Don't mix booking logic in the cycles router. Each domain (`cycles`, `bookings`, `grid`, `contacts`, `registration`, `analytics`) gets its own router file.
 - **Always pass errors to `next(err)`.** Every async route handler must have `try/catch` with `catch (err) { next(err); }`. Never send error responses manually from routes — let `errorHandler` do it.
 - **Middleware order matters.** Security middleware (Helmet, CORS, rate limiter) → parsing (JSON, cookies) → auth → validation → handler → error handler. Never rearrange this chain.
-- **New middleware = add to `app.js` only.** Don't apply middleware inside individual route files unless it's route-specific (like the HubSpot rate limiter).
+- **New middleware = add to `app.ts` only.** Don't apply middleware inside individual route files unless it's route-specific (like the HubSpot rate limiter).
 
 ### Prisma & Database
 
